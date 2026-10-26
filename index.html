@@ -1,1548 +1,517 @@
 <!DOCTYPE html>
-<html lang="ja" class="h-full">
+<html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>宿題手書き・赤ペン消しゴム | 解き直しプリント復元</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>宿題スキャナー・リマスター | 手書き一括消去</title>
+  
+  <!-- Tailwind CSS & FontAwesome -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-    <!-- PWA / Mobile Capable Tags -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="プリント復元">
-    <meta name="theme-color" content="#0f172a">
-
-    <!-- Fonts & Icons -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['"Plus Jakarta Sans"', '"Noto Sans JP"', 'sans-serif'],
-                    },
-                    colors: {
-                        brand: {
-                            50: '#eef2ff',
-                            500: '#6366f1',
-                            600: '#4f46e5',
-                            700: '#4338ca',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-
-    <!-- Custom Touch & Print Styling -->
-    <style>
-        /* タッチデバイスでの快適な操作とバウンス防止 */
-        html, body {
-            touch-action: pan-x pan-y;
-            -webkit-tap-highlight-color: transparent;
-            overscroll-behavior: none;
-        }
-        /* スプリット比較スライダー */
-        .comparison-wrapper {
-            position: relative;
-            user-select: none;
-            -webkit-user-select: none;
-            display: inline-block;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45);
-        }
-        .comparison-divider {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            background: #6366f1;
-            z-index: 25;
-            cursor: ew-resize;
-            box-shadow: 0 0 10px rgba(99, 102, 241, 0.8);
-        }
-        .comparison-handle {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
-            background: #ffffff;
-            border: 2.5px solid #6366f1;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #6366f1;
-            font-size: 11px;
-            pointer-events: none;
-        }
-        /* 市松模様（透過・余白チェック用） */
-        .checker-bg {
-            background-color: #0f172a;
-            background-image: 
-                linear-gradient(45deg, #1e293b 25%, transparent 25%), 
-                linear-gradient(-45deg, #1e293b 25%, transparent 25%), 
-                linear-gradient(45deg, transparent 75%, #1e293b 75%), 
-                linear-gradient(-45deg, transparent 75%, #1e293b 75%);
-            background-size: 20px 20px;
-            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-        }
-        /* A4印刷スタイル */
-        @media print {
-            body * { visibility: hidden !important; }
-            #printRoot, #printRoot * { visibility: visible !important; }
-            #printRoot {
-                position: fixed !important;
-                left: 0 !important;
-                top: 0 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                background: white !important;
-            }
-            #printRoot img {
-                max-width: 96% !important;
-                max-height: 96% !important;
-                object-fit: contain !important;
-            }
-            @page {
-                size: A4 portrait;
-                margin: 8mm;
-            }
-        }
-        /* スムーズアニメーション */
-        .spring-transition {
-            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-    </style>
+  <style>
+    body {
+      touch-action: pan-x pan-y;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+  </style>
 </head>
-<body class="bg-slate-950 text-slate-100 h-full flex flex-col font-sans select-none overflow-hidden">
+<body class="bg-slate-100 text-slate-800 flex flex-col h-screen overflow-hidden font-sans">
 
-    <!-- トップヘッダー -->
-    <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 px-4 py-2.5 z-40 flex items-center justify-between flex-shrink-0">
-        <div class="flex items-center space-x-3">
-            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-500 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-brand-500/30">
-                <i class="fa-solid fa-eraser text-base"></i>
-            </div>
-            <div>
-                <h1 class="text-sm sm:text-base font-bold tracking-tight text-white flex items-center gap-2">
-                    宿題手書き・赤ペン消しゴム
-                    <span class="text-[10px] bg-brand-500/20 text-brand-400 border border-brand-500/30 px-1.5 py-0.5 rounded font-mono font-medium hidden sm:inline-block">PWA Ready</span>
-                </h1>
-                <p class="text-[11px] text-slate-400 hidden xs:block">採点済みのプリントから赤ペン・手書きを消して白紙プリントに復元</p>
-            </div>
-        </div>
+  <!-- ヘッダー -->
+  <header class="bg-white border-b border-slate-200 px-4 py-2.5 flex items-center justify-between shadow-sm z-30 flex-shrink-0">
+    <div class="flex items-center space-x-2">
+      <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow">
+        <i class="fa-solid fa-wand-magic-sparkles text-sm"></i>
+      </div>
+      <div>
+        <h1 class="text-sm md:text-base font-bold text-slate-900 leading-tight">宿題リマスター</h1>
+        <p class="text-[10px] md:text-xs text-slate-500">手書き鉛筆・赤ペン・指影の一括消去</p>
+      </div>
+    </div>
+    
+    <div class="flex items-center space-x-2">
+      <button id="btn-export-pdf" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm flex items-center gap-1.5 transition disabled:opacity-40" disabled>
+        <i class="fa-solid fa-file-pdf"></i>
+        <span>PDF一括保存</span>
+      </button>
+    </div>
+  </header>
 
-        <div class="flex items-center space-x-2">
-            <!-- 履歴操作ボタン -->
-            <button id="undoBtn" disabled title="元に戻す (Ctrl+Z)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition">
-                <i class="fa-solid fa-rotate-left text-xs"></i>
-            </button>
-            <button id="redoBtn" disabled title="やり直す (Ctrl+Y)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition">
-                <i class="fa-solid fa-rotate-right text-xs"></i>
-            </button>
-            
-            <div class="h-4 w-px bg-slate-800 mx-1"></div>
+  <!-- メインワークスペース -->
+  <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
 
-            <!-- GitHub Pages デプロイ手順案内 -->
-            <button id="openDeployGuideBtn" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium flex items-center gap-1.5 transition border border-slate-700/60">
-                <i class="fa-brands fa-github text-slate-200"></i>
-                <span class="hidden md:inline">GitHub公開方法</span>
-            </button>
-
-            <!-- ホーム画面追加・インストール案内 -->
-            <button id="openInstallGuideBtn" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-brand-400 text-xs font-medium flex items-center gap-1.5 transition border border-slate-700/60">
-                <i class="fa-solid fa-mobile-screen"></i>
-                <span class="hidden sm:inline">スマホ追加</span>
-            </button>
-        </div>
-    </header>
-
-    <!-- メインコンテンツ領域 -->
-    <main class="flex-grow flex flex-col md:flex-row overflow-hidden relative">
-
-        <!-- 左サイドバー（デスクトップ＆タブレット用コントローラー：330px） -->
-        <aside class="w-full md:w-80 bg-slate-900 border-r border-slate-800/80 flex flex-col overflow-y-auto max-h-[38vh] md:max-h-none flex-shrink-0 z-30">
-            <div class="p-3.5 sm:p-4 space-y-4">
-
-                <!-- 1. 取り込みオプション -->
-                <div class="space-y-2">
-                    <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-                        <span><i class="fa-solid fa-file-arrow-up text-brand-500 mr-1.5"></i> 画像の取り込み</span>
-                        <button id="loadSampleBtn" class="text-brand-400 hover:text-brand-300 normal-case font-medium flex items-center gap-1">
-                            <i class="fa-solid fa-vial"></i> サンプルで試す
-                        </button>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2">
-                        <!-- スマホ背面カメラ直接起動 -->
-                        <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border border-dashed border-slate-700 bg-slate-800/50 hover:bg-slate-800 hover:border-brand-500 cursor-pointer transition text-center group">
-                            <i class="fa-solid fa-camera text-slate-400 group-hover:text-brand-400 text-base mb-1"></i>
-                            <span class="text-xs font-semibold text-slate-200">カメラでパシャリ</span>
-                            <span class="text-[9px] text-slate-500">背面カメラ直結</span>
-                            <input type="file" id="cameraShootInput" accept="image/*" capture="environment" class="hidden">
-                        </label>
-
-                        <!-- ファイル・写真選択 -->
-                        <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border border-dashed border-slate-700 bg-slate-800/50 hover:bg-slate-800 hover:border-brand-500 cursor-pointer transition text-center group">
-                            <i class="fa-solid fa-images text-slate-400 group-hover:text-brand-400 text-base mb-1"></i>
-                            <span class="text-xs font-semibold text-slate-200">アルバムから選択</span>
-                            <span class="text-[9px] text-slate-500">PNG / JPEG / WebP</span>
-                            <input type="file" id="fileSelectInput" accept="image/*" class="hidden">
-                        </label>
-                    </div>
-                </div>
-
-                <!-- 2. 復元フィルタ（複数同時選択・トグル式） -->
-                <div class="space-y-2">
-                    <div class="flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                        <span><i class="fa-solid fa-layer-group text-amber-400 mr-1.5"></i> 復元フィルタ（複数選択可）</span>
-                        <span class="text-[10px] text-brand-400 font-normal">同時適用OK</span>
-                    </div>
-                    <div class="space-y-1.5" id="filterToggleGroup">
-                        <!-- 赤ペンフィルタ -->
-                        <button class="filter-toggle w-full px-3 py-2 rounded-xl border transition flex items-center justify-between text-left group bg-rose-500/10 border-rose-500/60 text-rose-200" data-filter="red">
-                            <div class="flex items-center gap-2.5">
-                                <span class="w-3.5 h-3.5 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50 flex-shrink-0"></span>
-                                <div>
-                                    <div class="text-xs font-bold text-white flex items-center gap-1.5">
-                                        赤ペン・丸付け採点
-                                    </div>
-                                    <div class="text-[10px] text-slate-400">黒印刷文字を残し、赤・朱色インクを消去</div>
-                                </div>
-                            </div>
-                            <span class="status-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500 text-white">ON</span>
-                        </button>
-
-                        <!-- 鉛筆手書きフィルタ（高精度版） -->
-                        <button class="filter-toggle w-full px-3 py-2 rounded-xl border transition flex items-center justify-between text-left group bg-slate-800/70 border-slate-700/80 text-slate-300" data-filter="pencil">
-                            <div class="flex items-center gap-2.5">
-                                <span class="w-3.5 h-3.5 rounded-full bg-stone-400 shadow-sm flex-shrink-0"></span>
-                                <div>
-                                    <div class="text-xs font-bold text-white flex items-center gap-1.5">
-                                        鉛筆の手書き文字
-                                        <span class="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1 rounded font-medium">精度強化</span>
-                                    </div>
-                                    <div class="text-[10px] text-slate-400">印刷活字を保護し、黒鉛ストロークのみ適応除去</div>
-                                </div>
-                            </div>
-                            <span class="status-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700 text-slate-400">OFF</span>
-                        </button>
-
-                        <!-- 青・水性ペンフィルタ -->
-                        <button class="filter-toggle w-full px-3 py-2 rounded-xl border transition flex items-center justify-between text-left group bg-slate-800/70 border-slate-700/80 text-slate-300" data-filter="blue">
-                            <div class="flex items-center gap-2.5">
-                                <span class="w-3.5 h-3.5 rounded-full bg-blue-500 shadow-sm flex-shrink-0"></span>
-                                <div>
-                                    <div class="text-xs font-bold text-white">青ペン・水性ペン</div>
-                                    <div class="text-[10px] text-slate-400">カラーボールペンや青マーカーを除去</div>
-                                </div>
-                            </div>
-                            <span class="status-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700 text-slate-400">OFF</span>
-                        </button>
-
-                        <!-- 紙面の影除去・白紙化 -->
-                        <button class="filter-toggle w-full px-3 py-2 rounded-xl border transition flex items-center justify-between text-left group bg-slate-800/70 border-slate-700/80 text-slate-300" data-filter="paperWhite">
-                            <div class="flex items-center gap-2.5">
-                                <span class="w-3.5 h-3.5 rounded-full bg-slate-100 shadow-sm flex-shrink-0"></span>
-                                <div>
-                                    <div class="text-xs font-bold text-white">紙面の影・黄ばみ漂白</div>
-                                    <div class="text-[10px] text-slate-400">スマホ撮影の部屋の影を漂白して白紙化</div>
-                                </div>
-                            </div>
-                            <span class="status-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700 text-slate-400">OFF</span>
-                        </button>
-                    </div>
-
-                    <!-- 鉛筆の濃さクイック選択 (鉛筆ON時のみ強調) -->
-                    <div id="pencilPresetBar" class="p-2.5 rounded-xl bg-slate-800/50 border border-slate-800 space-y-1.5">
-                        <div class="flex items-center justify-between text-[11px] text-slate-300">
-                            <span class="font-bold flex items-center gap-1"><i class="fa-solid fa-pencil text-amber-400 text-xs"></i> 鉛筆の濃さ目安:</span>
-                            <span id="lblPencilPresetStatus" class="text-amber-300 font-semibold text-[10px]">標準 (B / 2B)</span>
-                        </div>
-                        <div class="grid grid-cols-3 gap-1.5">
-                            <button class="pencil-quick-btn py-1 rounded-lg text-[11px] font-semibold bg-slate-700 hover:bg-slate-650 text-slate-300" data-preset="light">薄め (HB/H)</button>
-                            <button class="pencil-quick-btn py-1 rounded-lg text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40" data-preset="medium">標準 (B/2B)</button>
-                            <button class="pencil-quick-btn py-1 rounded-lg text-[11px] font-semibold bg-slate-700 hover:bg-slate-650 text-slate-300" data-preset="dark">濃いめ (3B〜)</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 3. 詳細調整スライダー（アコーディオン） -->
-                <details class="bg-slate-800/50 rounded-xl border border-slate-800 p-3" id="tuneDetails">
-                    <summary class="text-xs font-bold text-slate-300 cursor-pointer flex items-center justify-between list-none">
-                        <span><i class="fa-solid fa-sliders text-brand-400 mr-1.5"></i> 検出感度の詳細チューニング</span>
-                        <i class="fa-solid fa-chevron-down text-slate-500 text-xs transition-transform duration-200"></i>
-                    </summary>
-                    <div class="mt-3 space-y-3 pt-2 border-t border-slate-800 text-xs">
-                        <div>
-                            <div class="flex justify-between text-slate-400 mb-1">
-                                <span>鉛筆消去の感度（紙とのコントラスト比）</span>
-                                <span id="lblPencilSens" class="font-mono text-brand-400 font-semibold">42</span>
-                            </div>
-                            <input type="range" id="sliderPencilSens" min="15" max="85" value="42" class="w-full accent-brand-500">
-                            <div class="flex justify-between text-[9px] text-slate-500 mt-0.5">
-                                <span>薄い鉛筆のみ消す</span>
-                                <span>濃い文字も消す</span>
-                            </div>
-                        </div>
-
-                        <div>
-                            <div class="flex justify-between text-slate-400 mb-1">
-                                <span>印刷文字の保護しきい値（極黒度）</span>
-                                <span id="lblPrintProtect" class="font-mono text-brand-400 font-semibold">48</span>
-                            </div>
-                            <input type="range" id="sliderPrintProtect" min="20" max="90" value="48" class="w-full accent-brand-500">
-                            <div class="flex justify-between text-[9px] text-slate-500 mt-0.5">
-                                <span>文字の消えを防ぐ</span>
-                                <span>濃い鉛筆も消す</span>
-                            </div>
-                        </div>
-
-                        <div>
-                            <div class="flex justify-between text-slate-400 mb-1">
-                                <span>赤・朱色の検出感度</span>
-                                <span id="lblRedSens" class="font-mono text-brand-400 font-semibold">75</span>
-                            </div>
-                            <input type="range" id="sliderRedSens" min="20" max="140" value="75" class="w-full accent-brand-500">
-                        </div>
-
-                        <div>
-                            <div class="flex justify-between text-slate-400 mb-1">
-                                <span>背景ホワイト化（影除去）</span>
-                                <span id="lblWhiteSens" class="font-mono text-brand-400 font-semibold">205</span>
-                            </div>
-                            <input type="range" id="sliderWhiteSens" min="160" max="245" value="205" class="w-full accent-brand-500">
-                        </div>
-                    </div>
-                </details>
-
-                <!-- 4. 手動消しゴム（名前欄消去・余白修復） -->
-                <div class="space-y-2">
-                    <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                        <i class="fa-solid fa-paintbrush text-indigo-400 mr-1.5"></i> 手動ブラシツール
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button id="btnToolPan" class="tool-btn py-2 px-3 rounded-xl bg-brand-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow transition" data-mode="pan">
-                            <i class="fa-solid fa-hand"></i> 移動 / ズーム
-                        </button>
-                        <button id="btnToolBrush" class="tool-btn py-2 px-3 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-750 text-xs font-bold flex items-center justify-center gap-1.5 transition" data-mode="brush">
-                            <i class="fa-solid fa-eraser"></i> 手動消しゴム
-                        </button>
-                    </div>
-
-                    <div id="brushSizeBox" class="hidden bg-slate-800/40 p-2.5 rounded-xl border border-slate-800 space-y-1.5">
-                        <div class="flex justify-between text-xs text-slate-400">
-                            <span>ブラシ半径</span>
-                            <span id="lblBrushSize" class="font-mono text-brand-400 font-bold">25px</span>
-                        </div>
-                        <input type="range" id="sliderBrushSize" min="6" max="90" value="25" class="w-full accent-brand-500">
-                        <p class="text-[10px] text-slate-400 leading-tight">
-                            ※なぞった部分の周囲の紙面色を自動採取して消去します（名前やメモの消去に最適）。
-                        </p>
-                    </div>
-                </div>
-
-                <!-- 5. 出力アクション（デスクトップ向け） -->
-                <div class="pt-2 hidden md:grid grid-cols-2 gap-2">
-                    <button id="btnPrintA4Desktop" disabled class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-bold text-white flex items-center justify-center gap-1.5 border border-slate-700 transition">
-                        <i class="fa-solid fa-print"></i> A4印刷
-                    </button>
-                    <button id="btnDownloadDesktop" disabled class="py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-bold text-white flex items-center justify-center gap-1.5 shadow-lg shadow-brand-500/20 transition">
-                        <i class="fa-solid fa-download"></i> 高画質保存
-                    </button>
-                </div>
-
-            </div>
-        </aside>
-
-        <!-- メインキャンバス・ビューポート -->
-        <section id="viewportArea" class="flex-grow flex items-center justify-center relative overflow-hidden bg-slate-950 p-2 sm:p-4">
-
-            <!-- 画像未選択時の初期メッセージ -->
-            <div id="welcomePlaceholder" class="text-center p-6 max-w-md mx-auto space-y-4">
-                <div class="w-20 h-20 mx-auto rounded-3xl bg-slate-900 border border-slate-800 flex items-center justify-center text-brand-400 text-3xl shadow-2xl">
-                    <i class="fa-solid fa-sheet-plastic"></i>
-                </div>
-                <div class="space-y-1.5">
-                    <h2 class="text-lg font-bold text-white">プリントを読み込んでスタート</h2>
-                    <p class="text-xs text-slate-400 leading-relaxed">
-                        丸付け済み・書き込み済みの宿題プリントをカメラや写真から取り込むと、瞬時に手書き文字を消去して新品のプリントに復元します。
-                    </p>
-                </div>
-                <div class="pt-2 flex flex-wrap items-center justify-center gap-2">
-                    <button id="triggerSampleBtn" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold shadow-lg shadow-brand-500/30 flex items-center gap-1.5 transition">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i>
-                        サンプル宿題で試してみる
-                    </button>
-                </div>
-            </div>
-
-            <!-- キャンバス表示コンテナ（スケーリング＆パン対象） -->
-            <div id="stageTransformContainer" class="hidden transition-transform duration-75">
-                <div id="comparisonBox" class="comparison-wrapper rounded-lg overflow-hidden border border-slate-800 checker-bg">
-                    
-                    <!-- 処理後キャンバス (Base layer) -->
-                    <canvas id="cleanedCanvas" class="block max-w-none"></canvas>
-
-                    <!-- 元画像クリッピングコンテナ (Top layer) -->
-                    <div id="beforeLayer" class="absolute inset-0 overflow-hidden pointer-events-none">
-                        <canvas id="originalCanvas" class="block max-w-none"></canvas>
-                    </div>
-
-                    <!-- 手動消しゴム・描画受け取り用キャンバス -->
-                    <canvas id="paintCanvas" class="absolute inset-0 pointer-events-none z-20"></canvas>
-
-                    <!-- 比較スプリット線 -->
-                    <div id="dividerLine" class="comparison-divider">
-                        <div class="comparison-handle">
-                            <i class="fa-solid fa-left-right"></i>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-            <!-- フローティングビューコントローラー（ズーム・スプリット切替） -->
-            <div id="floatingViewBar" class="hidden absolute top-4 right-4 bg-slate-900/90 backdrop-blur-md border border-slate-800/90 px-3 py-1.5 rounded-2xl shadow-xl flex items-center space-x-3 z-30 text-xs">
-                <div class="flex items-center space-x-1">
-                    <button id="btnViewClean" class="px-2 py-1 rounded-lg bg-brand-600 text-white text-[11px] font-bold">復元後</button>
-                    <button id="btnViewSplit" class="px-2 py-1 rounded-lg bg-slate-800 text-slate-300 text-[11px] font-medium hover:bg-slate-750">比較</button>
-                    <button id="btnViewOrig" class="px-2 py-1 rounded-lg bg-slate-800 text-slate-300 text-[11px] font-medium hover:bg-slate-750">元画像</button>
-                </div>
-                <div class="h-3.5 w-px bg-slate-800"></div>
-                <div class="flex items-center space-x-1.5 text-slate-300">
-                    <button id="btnZoomOut" class="p-1 hover:text-white"><i class="fa-solid fa-minus text-xs"></i></button>
-                    <span id="lblZoomLevel" class="font-mono text-[11px] w-9 text-center font-bold">100%</span>
-                    <button id="btnZoomIn" class="p-1 hover:text-white"><i class="fa-solid fa-plus text-xs"></i></button>
-                    <button id="btnZoomFit" title="全体を表示" class="p-1 hover:text-brand-400 ml-1"><i class="fa-solid fa-arrows-to-eye text-xs"></i></button>
-                </div>
-            </div>
-
-            <!-- ブラシカーソルプレビュー -->
-            <div id="brushPointer" class="fixed pointer-events-none rounded-full border-2 border-brand-400 bg-brand-500/20 hidden z-50 transform -translate-x-1/2 -translate-y-1/2"></div>
-        </section>
-
-    </main>
-
-    <!-- モバイル向けボトムアクションバー (スマホ/タブレット表示) -->
-    <nav class="md:hidden bg-slate-900/95 backdrop-blur-lg border-t border-slate-800/80 px-4 py-2 z-40 flex items-center justify-around flex-shrink-0">
-        <label class="flex flex-col items-center justify-center text-slate-300 hover:text-brand-400 cursor-pointer">
-            <i class="fa-solid fa-camera text-base"></i>
-            <span class="text-[10px] font-medium mt-0.5">撮影</span>
-            <input type="file" id="mobileCameraInput" accept="image/*" capture="environment" class="hidden">
-        </label>
+    <!-- プレビュー＆操作エリア -->
+    <div class="flex-1 flex flex-col relative bg-slate-200 overflow-hidden">
+      
+      <!-- メインキャンバス・ビューワー -->
+      <div id="viewer-container" class="flex-1 relative flex items-center justify-center p-3 overflow-hidden select-none">
         
-        <button id="mobileFilterToggleBtn" class="flex flex-col items-center justify-center text-slate-300 hover:text-brand-400">
-            <i class="fa-solid fa-wand-magic-sparkles text-base text-amber-400"></i>
-            <span class="text-[10px] font-medium mt-0.5">赤・鉛筆消去</span>
-        </button>
-
-        <button id="mobileEraserToggleBtn" class="flex flex-col items-center justify-center text-slate-300 hover:text-brand-400">
-            <i class="fa-solid fa-eraser text-base"></i>
-            <span class="text-[10px] font-medium mt-0.5">手動消し</span>
-        </button>
-
-        <button id="mobilePrintBtn" disabled class="flex flex-col items-center justify-center text-slate-300 hover:text-brand-400 disabled:opacity-30">
-            <i class="fa-solid fa-print text-base"></i>
-            <span class="text-[10px] font-medium mt-0.5">A4印刷</span>
-        </button>
-
-        <button id="mobileDownloadBtn" disabled class="flex flex-col items-center justify-center text-brand-400 hover:text-brand-300 disabled:opacity-30 font-bold">
-            <i class="fa-solid fa-circle-down text-lg"></i>
-            <span class="text-[10px] font-medium mt-0.5">保存</span>
-        </button>
-    </nav>
-
-    <!-- GitHub Pages デプロイ案内モーダル -->
-    <div id="deployGuideModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
-            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
-                <div class="flex items-center gap-2 text-white font-bold text-base">
-                    <i class="fa-brands fa-github text-xl text-brand-400"></i>
-                    <span>GitHub Pages での無料公開手順 (3ステップ)</span>
-                </div>
-                <button id="closeDeployGuideBtn" class="text-slate-400 hover:text-white p-1">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-
-            <div class="space-y-3.5 text-xs text-slate-300 leading-relaxed">
-                <p class="text-slate-400">
-                    このアプリは外部サーバー不要（完全ブラウザ完結）のため、GitHub Pagesに置くだけで家族全員のスマホやiPadから無料でアクセス可能になります。
-                </p>
-
-                <div class="bg-slate-800/60 p-3 rounded-2xl border border-slate-800 space-y-2">
-                    <div class="font-bold text-white flex items-center gap-1.5">
-                        <span class="w-5 h-5 rounded-full bg-brand-500 text-white flex items-center justify-center text-[10px]">1</span>
-                        GitHubでリポジトリを作成
-                    </div>
-                    <p class="text-slate-400 pl-6">
-                        GitHubにログインし、「New repository」から新しいリポジトリ（例: <code class="bg-slate-950 px-1 py-0.5 rounded text-brand-300">homework-eraser</code>）をPublicで作成します。
-                    </p>
-                </div>
-
-                <div class="bg-slate-800/60 p-3 rounded-2xl border border-slate-800 space-y-2">
-                    <div class="font-bold text-white flex items-center gap-1.5">
-                        <span class="w-5 h-5 rounded-full bg-brand-500 text-white flex items-center justify-center text-[10px]">2</span>
-                        このコードを <code class="text-brand-300">index.html</code> としてアップロード
-                    </div>
-                    <p class="text-slate-400 pl-6">
-                        右上の「Add file」→「Upload files」を選択し、このHTMLファイルをファイル名 <strong class="text-white">index.html</strong> のままドラッグ＆ドロップしてCommitします。
-                    </p>
-                </div>
-
-                <div class="bg-slate-800/60 p-3 rounded-2xl border border-slate-800 space-y-2">
-                    <div class="font-bold text-white flex items-center gap-1.5">
-                        <span class="w-5 h-5 rounded-full bg-brand-500 text-white flex items-center justify-center text-[10px]">3</span>
-                        Pages を有効化
-                    </div>
-                    <p class="text-slate-400 pl-6">
-                        リポジトリの「Settings」タブ → 左メニューの「Pages」を開き、Build and deployment の Branch を <strong class="text-white">main</strong>（またはmaster）/ <strong class="text-white">/ (root)</strong> にして「Save」を押します。約1分後に専用のURLが発行されます！
-                    </p>
-                </div>
-            </div>
-
-            <div class="pt-2 text-right">
-                <button id="ackDeployGuideBtn" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-lg shadow-brand-500/20">
-                    理解しました
-                </button>
-            </div>
+        <!-- 空状態案内 -->
+        <div id="empty-state" class="text-center p-6 bg-white/95 backdrop-blur rounded-2xl shadow-lg border border-slate-200 max-w-sm">
+          <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-2xl">
+            <i class="fa-regular fa-images"></i>
+          </div>
+          <h2 class="text-base font-bold text-slate-800 mb-1">宿題プリントを選択</h2>
+          <p class="text-xs text-slate-500 mb-4">まとめて複数枚の写真を選択できます。<br>手書き文字・丸付け・影を自動消去します。</p>
+          <div class="flex flex-col gap-2">
+            <label class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs rounded-xl shadow cursor-pointer transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-plus"></i> プリントを追加する
+              <input type="file" id="input-files" accept="image/*" multiple class="hidden">
+            </label>
+            <label class="w-full py-2.5 px-4 bg-white border border-slate-300 text-slate-700 font-medium text-xs rounded-xl shadow-sm cursor-pointer transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-camera"></i> カメラで撮影する
+              <input type="file" id="input-camera" accept="image/*" capture="environment" class="hidden">
+            </label>
+          </div>
         </div>
-    </div>
 
-    <!-- スマホ・ホーム画面追加案内モーダル -->
-    <div id="installGuideModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
-            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
-                <div class="flex items-center gap-2 text-white font-bold text-sm">
-                    <i class="fa-solid fa-mobile-screen-button text-brand-400"></i>
-                    <span>スマホアプリとして使う方法</span>
-                </div>
-                <button id="closeInstallGuideBtn" class="text-slate-400 hover:text-white p-1">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
+        <!-- スプリット比較ビューワー -->
+        <div id="split-box" class="relative hidden shadow-2xl rounded-lg overflow-hidden border border-slate-300 bg-white max-h-full max-w-full">
+          <!-- 処理後画像（下層） -->
+          <img id="img-processed" class="max-h-[60vh] md:max-h-[72vh] w-auto object-contain block pointer-events-none" alt="処理後">
+          
+          <!-- 処理前画像（上層クリップ） -->
+          <div id="split-overlay" class="absolute inset-y-0 left-0 overflow-hidden pointer-events-none border-r-2 border-indigo-500 bg-white" style="width: 50%;">
+            <img id="img-original" class="max-h-[60vh] md:max-h-[72vh] w-auto object-contain block pointer-events-none max-w-none" alt="処理前">
+          </div>
 
-            <div class="space-y-3 text-xs text-slate-300">
-                <div class="border-l-2 border-brand-500 pl-3 space-y-1">
-                    <div class="font-bold text-white flex items-center gap-1"><i class="fa-brands fa-apple text-sm"></i> iPhone / iPad (Safari)</div>
-                    <p class="text-slate-400">画面下の共有ボタン（四角から矢印が出たアイコン）をタップし、メニューから<strong class="text-slate-200">「ホーム画面に追加」</strong>を選びます。</p>
-                </div>
-                <div class="border-l-2 border-emerald-500 pl-3 space-y-1">
-                    <div class="font-bold text-white flex items-center gap-1"><i class="fa-brands fa-android text-sm text-emerald-400"></i> Android (Chrome)</div>
-                    <p class="text-slate-400">右上のメニュー（︙）をタップし、<strong class="text-slate-200">「アプリをインストール」</strong>または「ホーム画面に追加」を選びます。</p>
-                </div>
+          <!-- スライダー操作用バー（ドラッグ領域） -->
+          <div id="split-bar" class="absolute inset-y-0 w-8 -ml-4 cursor-ew-resize flex items-center justify-center z-10 touch-none">
+            <div class="w-7 h-7 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg text-[11px] border-2 border-white">
+              <i class="fa-solid fa-arrows-left-right"></i>
             </div>
-
-            <div class="pt-2 text-right">
-                <button id="ackInstallGuideBtn" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs">
-                    閉じる
-                </button>
-            </div>
+          </div>
         </div>
+
+        <!-- 処理中ローディング -->
+        <div id="processing-spinner" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex-col items-center justify-center text-white z-20">
+          <div class="w-12 h-12 border-4 border-indigo-400 border-t-white rounded-full animate-spin mb-3"></div>
+          <p id="processing-text" class="text-sm font-semibold tracking-wide">画像解析＆白紙復元中...</p>
+          <p class="text-xs text-slate-300 mt-1">印刷活字・下線のみを残しています</p>
+        </div>
+      </div>
+
+      <!-- 複数画像サムネイルトレイ -->
+      <div id="thumbnail-tray" class="h-20 bg-white border-t border-slate-200 px-3 flex items-center gap-2 overflow-x-auto custom-scrollbar z-10 hidden flex-shrink-0">
+        <label class="flex-shrink-0 w-14 h-14 border-2 border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center text-slate-400 hover:border-indigo-500 hover:text-indigo-600 cursor-pointer transition">
+          <i class="fa-solid fa-plus text-xs"></i>
+          <span class="text-[9px] mt-0.5">追加</span>
+          <input type="file" id="input-files-tray" accept="image/*" multiple class="hidden">
+        </label>
+        <div id="thumbnail-list" class="flex items-center gap-2"></div>
+      </div>
     </div>
 
-    <!-- 印刷用不可視ルート -->
-    <div id="printRoot" class="hidden"></div>
+    <!-- サイドコントロールパネル -->
+    <aside class="w-full md:w-80 bg-white border-t md:border-t-0 md:border-l border-slate-200 p-4 flex flex-col gap-4 shadow-lg z-20 overflow-y-auto flex-shrink-0">
+      
+      <div>
+        <h3 class="text-xs font-bold text-slate-400 tracking-wider uppercase mb-2">アクション</h3>
+        <div class="grid grid-cols-2 gap-2">
+          <button id="btn-process-current" class="py-2.5 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 flex items-center justify-center gap-1.5 transition disabled:opacity-40" disabled>
+            <i class="fa-solid fa-wand-magic"></i> このページ消去
+          </button>
+          <button id="btn-process-all" class="py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm flex items-center justify-center gap-1.5 transition disabled:opacity-40" disabled>
+            <i class="fa-solid fa-bolt"></i> 全て一括消去
+          </button>
+        </div>
+      </div>
 
-    <!-- トースト通知 -->
-    <div id="toast" class="fixed bottom-16 md:bottom-6 right-1/2 translate-x-1/2 md:translate-x-0 md:right-6 bg-slate-800/95 border border-slate-700 text-white px-4 py-2.5 rounded-2xl shadow-2xl text-xs font-semibold flex items-center gap-2 transition-all duration-300 transform translate-y-24 opacity-0 z-50 pointer-events-none">
-        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400"></i>
-        <span id="toastMsg">通知テキスト</span>
-    </div>
+      <div class="border-t border-slate-100 pt-3">
+        <h3 class="text-xs font-bold text-slate-400 tracking-wider uppercase mb-2">消去対象の選択</h3>
+        <div class="space-y-2">
+          <label class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
+            <span class="text-xs font-semibold text-slate-700"><i class="fa-solid fa-pen text-slate-500 mr-2"></i>鉛筆の手書き文字</span>
+            <input type="checkbox" id="filter-pencil" checked class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+          </label>
+          <label class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
+            <span class="text-xs font-semibold text-slate-700"><i class="fa-solid fa-check text-red-500 mr-2"></i>赤ペン・丸付け採点</span>
+            <input type="checkbox" id="filter-red" checked class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+          </label>
+          <label class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
+            <span class="text-xs font-semibold text-slate-700"><i class="fa-regular fa-sun text-amber-500 mr-2"></i>手の影・紙の黄ばみ漂白</span>
+            <input type="checkbox" id="filter-shadow" checked class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+          </label>
+        </div>
+      </div>
 
-    <!-- JavaScript ロジック -->
-    <script>
-        // --- 状態管理 ---
-        const state = {
-            imageLoaded: false,
-            width: 0,
-            height: 0,
-            mode: 'pan',         // 'pan' | 'brush'
-            viewMode: 'split',    // 'split' | 'cleaned' | 'original'
-            splitPos: 50,         // 0% - 100%
-            brushSize: 25,
-            zoom: 1,
-            panX: 0,
-            panY: 0,
-            isDraggingDivider: false,
-            isBrushing: false,
-            // 2本指ジェスチャー用
-            isGesturePanning: false,
-            touchStartDist: 0,
-            touchStartZoom: 1,
-            touchLastX: 0,
-            touchLastY: 0,
-            history: [],
-            historyIdx: -1,
-            maxHistory: 8,
-            // 複数フィルタのトグル状態
-            activeFilters: {
-                red: true,        // 赤ペン消去 (デフォルトON)
-                pencil: false,    // 鉛筆消去
-                blue: false,      // 青ペン消去
-                paperWhite: false // 影除去・白紙化
-            }
+      <div class="border-t border-slate-100 pt-3">
+        <h3 class="text-xs font-bold text-slate-400 tracking-wider uppercase mb-2">消去の強さ調整</h3>
+        <div class="space-y-3">
+          <div>
+            <div class="flex justify-between text-[11px] text-slate-600 mb-1">
+              <span>鉛筆消去の強さ</span>
+              <span id="label-pencil-strength">標準 (B/2B)</span>
+            </div>
+            <input type="range" id="range-pencil-strength" min="1" max="3" value="2" class="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer">
+          </div>
+          <div>
+            <div class="flex justify-between text-[11px] text-slate-600 mb-1">
+              <span>印刷文字・下線の保護</span>
+              <span id="label-protect-strength">高</span>
+            </div>
+            <input type="range" id="range-protect" min="30" max="90" value="65" class="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer">
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-auto border-t border-slate-100 pt-3 flex items-center justify-between text-xs text-slate-500">
+        <span id="page-indicator">プリント: 0枚</span>
+        <button id="btn-delete-current" class="text-rose-500 hover:underline flex items-center gap-1 disabled:opacity-40" disabled>
+          <i class="fa-regular fa-trash-can"></i> 削除
+        </button>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    const state = {
+      pages: [],
+      currentIndex: 0,
+      splitPos: 50,
+      isDraggingSplit: false
+    };
+
+    // DOM要素
+    const inputFiles = document.getElementById('input-files');
+    const inputCamera = document.getElementById('input-camera');
+    const inputFilesTray = document.getElementById('input-files-tray');
+    const emptyState = document.getElementById('empty-state');
+    const splitBox = document.getElementById('split-box');
+    const thumbnailTray = document.getElementById('thumbnail-tray');
+    const thumbnailList = document.getElementById('thumbnail-list');
+    const imgOriginal = document.getElementById('img-original');
+    const imgProcessed = document.getElementById('img-processed');
+    const splitOverlay = document.getElementById('split-overlay');
+    const splitBar = document.getElementById('split-bar');
+    const pageIndicator = document.getElementById('page-indicator');
+    const btnProcessCurrent = document.getElementById('btn-process-current');
+    const btnProcessAll = document.getElementById('btn-process-all');
+    const btnExportPdf = document.getElementById('btn-export-pdf');
+    const btnDeleteCurrent = document.getElementById('btn-delete-current');
+    const spinner = document.getElementById('processing-spinner');
+    const processingText = document.getElementById('processing-text');
+
+    const filterPencil = document.getElementById('filter-pencil');
+    const filterRed = document.getElementById('filter-red');
+    const filterShadow = document.getElementById('filter-shadow');
+    const rangePencilStrength = document.getElementById('range-pencil-strength');
+    const rangeProtect = document.getElementById('range-protect');
+    const labelPencilStrength = document.getElementById('label-pencil-strength');
+
+    // 鉛筆ラベル切り替え
+    rangePencilStrength.addEventListener('input', (e) => {
+      const v = e.target.value;
+      if (v === '1') labelPencilStrength.textContent = '弱め (HB/H)';
+      else if (v === '2') labelPencilStrength.textContent = '標準 (B/2B)';
+      else labelPencilStrength.textContent = '強め (3B〜/筆圧高)';
+    });
+
+    // ファイル追加処理
+    function handleFiles(files) {
+      if (!files || files.length === 0) return;
+      Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          state.pages.push({
+            id: Date.now() + Math.random().toString(36).substring(2, 6),
+            originalDataUrl: e.target.result,
+            processedDataUrl: null,
+            isProcessed: false
+          });
+          if (state.pages.length === 1) state.currentIndex = 0;
+          renderUI();
         };
+        reader.readAsDataURL(file);
+      });
+    }
 
-        // --- DOM Cache ---
-        const $ = id => document.getElementById(id);
-        const originalCanvas = $('originalCanvas');
-        const origCtx = originalCanvas.getContext('2d');
-        const cleanedCanvas = $('cleanedCanvas');
-        const cleanCtx = cleanedCanvas.getContext('2d', { willReadFrequently: true });
-        const paintCanvas = $('paintCanvas');
-        const paintCtx = paintCanvas.getContext('2d');
-        const beforeLayer = $('beforeLayer');
-        const dividerLine = $('dividerLine');
-        const comparisonBox = $('comparisonBox');
-        const transformContainer = $('stageTransformContainer');
-        const viewportArea = $('viewportArea');
+    inputFiles.addEventListener('change', (e) => handleFiles(e.target.files));
+    inputCamera.addEventListener('change', (e) => handleFiles(e.target.files));
+    inputFilesTray.addEventListener('change', (e) => handleFiles(e.target.files));
 
-        // --- 初期化 ---
-        window.addEventListener('DOMContentLoaded', () => {
-            setupInputs();
-            setupFilterToggles();
-            setupDividerEvents();
-            setupPanZoomGestures();
-            setupBrushTool();
-            setupExportAndPrint();
-            setupModals();
-            registerPwaFallback();
-        });
+    // UIの描画更新
+    function renderUI() {
+      const hasPages = state.pages.length > 0;
+      emptyState.classList.toggle('hidden', hasPages);
+      splitBox.classList.toggle('hidden', !hasPages);
+      thumbnailTray.classList.toggle('hidden', !hasPages);
 
-        // --- 画像取り込みハンドラー ---
-        function setupInputs() {
-            const handleFile = (file) => {
-                if (!file || !file.type.startsWith('image/')) {
-                    showToast('画像ファイルを選択してください', 'error');
-                    return;
-                }
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const img = new Image();
-                    img.onload = () => initAppWithImage(img);
-                    img.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            };
+      btnProcessCurrent.disabled = !hasPages;
+      btnProcessAll.disabled = !hasPages;
+      btnExportPdf.disabled = !hasPages || !state.pages.some(p => p.isProcessed);
+      btnDeleteCurrent.disabled = !hasPages;
 
-            $('fileSelectInput').addEventListener('change', (e) => e.target.files[0] && handleFile(e.target.files[0]));
-            $('cameraShootInput').addEventListener('change', (e) => e.target.files[0] && handleFile(e.target.files[0]));
-            $('mobileCameraInput').addEventListener('change', (e) => e.target.files[0] && handleFile(e.target.files[0]));
+      if (!hasPages) {
+        pageIndicator.textContent = 'プリント: 0枚';
+        return;
+      }
 
-            // サンプル宿題プリント生成
-            const loadSample = () => {
-                const sampleImg = createSyntheticHomeworkSheet();
-                initAppWithImage(sampleImg);
-                showToast('サンプル宿題を読み込みました', 'info');
-            };
-            $('loadSampleBtn').addEventListener('click', loadSample);
-            $('triggerSampleBtn').addEventListener('click', loadSample);
+      pageIndicator.textContent = `${state.currentIndex + 1} / ${state.pages.length} 枚`;
+      const current = state.pages[state.currentIndex];
 
-            // ドラッグ＆ドロップ
-            window.addEventListener('dragover', (e) => e.preventDefault());
-            window.addEventListener('drop', (e) => {
-                e.preventDefault();
-                if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
-            });
-        }
+      imgOriginal.src = current.originalDataUrl;
+      imgProcessed.src = current.processedDataUrl || current.originalDataUrl;
 
-        // --- サンプル宿題画像の動的生成（数式・漢字・赤丸・鉛筆書き込み） ---
-        function createSyntheticHomeworkSheet() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 1200;
-            canvas.height = 1600;
-            const ctx = canvas.getContext('2d');
+      // サムネイル更新
+      thumbnailList.innerHTML = '';
+      state.pages.forEach((page, idx) => {
+        const thumb = document.createElement('div');
+        thumb.className = `w-14 h-14 rounded-lg overflow-hidden border-2 cursor-pointer flex-shrink-0 relative ${idx === state.currentIndex ? 'border-indigo-600 ring-2 ring-indigo-300' : 'border-slate-300'}`;
+        thumb.innerHTML = `
+          <img src="${page.processedDataUrl || page.originalDataUrl}" class="w-full h-full object-cover">
+          ${page.isProcessed ? '<span class="absolute bottom-0 right-0 bg-emerald-500 text-white text-[8px] px-1 rounded-tl font-bold">済</span>' : ''}
+        `;
+        thumb.onclick = () => {
+          state.currentIndex = idx;
+          renderUI();
+        };
+        thumbnailList.appendChild(thumb);
+      });
 
-            // 1. 少しアイボリーがかった紙色 + 微妙な部屋の影グラデーション
-            const bgGrad = ctx.createLinearGradient(0, 0, 1200, 1600);
-            bgGrad.addColorStop(0, '#f9fafb');
-            bgGrad.addColorStop(1, '#e5e7eb');
-            ctx.fillStyle = bgGrad;
-            ctx.fillRect(0, 0, 1200, 1600);
+      // 表示サイズ同期
+      setTimeout(syncSplitSize, 50);
+    }
 
-            // 2. 印刷された問題文（漆黒: 濃度が非常に高い黒）
-            ctx.fillStyle = '#0f172a';
-            ctx.font = 'bold 38px "Noto Sans JP", sans-serif';
-            ctx.fillText('算数・計算プリント (小4復習)', 80, 120);
+    // スプリット画像の表示サイズを一致させる
+    function syncSplitSize() {
+      if (!splitBox || splitBox.classList.contains('hidden')) return;
+      const rect = imgProcessed.getBoundingClientRect();
+      if (rect.width > 0) {
+        imgOriginal.style.width = `${rect.width}px`;
+        imgOriginal.style.height = `${rect.height}px`;
+        updateSplit(state.splitPos);
+      }
+    }
 
-            ctx.font = '500 24px "Noto Sans JP", sans-serif';
-            ctx.fillText('組: 4年2組    氏名: ＿＿＿＿＿＿＿＿', 680, 120);
+    window.addEventListener('resize', syncSplitSize);
+    imgProcessed.addEventListener('load', syncSplitSize);
 
-            ctx.strokeStyle = '#94a3b8';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(80, 150); ctx.lineTo(1120, 150);
-            ctx.stroke();
+    // スプリットバー操作（マウス & スマホタッチ両対応）
+    function updateSplit(percentage) {
+      state.splitPos = Math.max(0, Math.min(100, percentage));
+      splitOverlay.style.width = `${state.splitPos}%`;
+      splitBar.style.left = `${state.splitPos}%`;
+    }
 
-            // 問題ブロック
-            const problems = [
-                { q: '問1. 次の計算をしなさい。', math: '(1)  248 + 589 = ', hand: '837', ansCorrect: true, y: 240 },
-                { q: '', math: '(2)  1000 - 347 = ', hand: '753', ansCorrect: false, correctNote: '653', y: 360 },
-                { q: '問2. 面積を求めなさい。', math: '(1) たて 14cm, 横 8cm の長方形の面積', hand: '112 cm²', ansCorrect: true, y: 520 },
-                { q: '', math: '(2) 1辺が 15cm の正方形の面積', hand: '225 cm²', ansCorrect: true, y: 640 },
-                { q: '問3. 次の漢字の読みを書きなさい。', math: '(1) 宿題 を丁寧に終わらせる。', hand: 'しゅくだい', ansCorrect: true, y: 800 },
-                { q: '', math: '(2) 毎日 復習 することが大切だ。', hand: 'ふくしゅう', ansCorrect: true, y: 920 }
-            ];
+    function onPointerMove(e) {
+      if (!state.isDraggingSplit) return;
+      const rect = splitBox.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const pos = ((clientX - rect.left) / rect.width) * 100;
+      updateSplit(pos);
+    }
 
-            problems.forEach(p => {
-                if (p.q) {
-                    ctx.fillStyle = '#0f172a';
-                    ctx.font = 'bold 26px "Noto Sans JP", sans-serif';
-                    ctx.fillText(p.q, 80, p.y);
-                }
-                ctx.fillStyle = '#1e293b';
-                ctx.font = '600 28px "Plus Jakarta Sans", "Noto Sans JP", sans-serif';
-                ctx.fillText(p.math, 120, p.y + 50);
+    function onPointerUp() {
+      state.isDraggingSplit = false;
+      window.removeEventListener('mousemove', onPointerMove);
+      window.removeEventListener('mouseup', onPointerUp);
+      window.removeEventListener('touchmove', onPointerMove);
+      window.removeEventListener('touchend', onPointerUp);
+    }
 
-                // 3. 鉛筆の手書き回答（グレー寄りの黒鉛トーン）
-                ctx.fillStyle = '#52525b';
-                ctx.font = 'bold 32px cursive, "Noto Sans JP"';
-                ctx.fillText(p.hand, 580, p.y + 48);
+    function onPointerDown(e) {
+      state.isDraggingSplit = true;
+      window.addEventListener('mousemove', onPointerMove);
+      window.addEventListener('mouseup', onPointerUp);
+      window.addEventListener('touchmove', onPointerMove);
+      window.addEventListener('touchend', onPointerUp);
+      e.preventDefault();
+    }
 
-                // 4. 赤ペンの丸付け・採点（赤・朱色）
-                if (p.ansCorrect) {
-                    ctx.strokeStyle = '#ef4444';
-                    ctx.lineWidth = 6;
-                    ctx.beginPath();
-                    ctx.arc(630, p.y + 40, 48, 0, Math.PI * 2);
-                    ctx.stroke();
-                } else {
-                    // バツと赤ペン修正
-                    ctx.strokeStyle = '#dc2626';
-                    ctx.lineWidth = 6;
-                    ctx.beginPath();
-                    ctx.moveTo(590, p.y + 10); ctx.lineTo(670, p.y + 70);
-                    ctx.moveTo(670, p.y + 10); ctx.lineTo(590, p.y + 70);
-                    ctx.stroke();
+    splitBar.addEventListener('mousedown', onPointerDown);
+    splitBar.addEventListener('touchstart', onPointerDown, { passive: false });
 
-                    // 赤ペン模範解答
-                    ctx.fillStyle = '#dc2626';
-                    ctx.font = 'bold 26px sans-serif';
-                    ctx.fillText(p.correctNote, 710, p.y + 45);
-                }
-            });
+    // ==========================================
+    // 高精度画像処理パイプライン（ローカル解析）
+    // ==========================================
+    function processImageLocally(dataUrl) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          const cvs = document.createElement('canvas');
+          const maxDim = 2048; // A4印刷に耐えうる高解像度
+          let w = img.width;
+          let h = img.height;
 
-            // 花丸（総合得点）
-            ctx.strokeStyle = '#ef4444';
-            ctx.lineWidth = 7;
-            ctx.beginPath();
-            ctx.arc(1020, 260, 65, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.fillStyle = '#ef4444';
-            ctx.font = 'bold 36px sans-serif';
-            ctx.fillText('90点', 985, 272);
-
-            const img = new Image();
-            img.src = canvas.toDataURL('image/jpeg', 0.95);
-            return img;
-        }
-
-        // --- キャンバス初期化 ---
-        function initAppWithImage(img) {
-            state.imageLoaded = true;
-            state.width = img.width;
-            state.height = img.height;
-
-            [originalCanvas, cleanedCanvas, paintCanvas].forEach(c => {
-                c.width = state.width;
-                c.height = state.height;
-            });
-
-            origCtx.drawImage(img, 0, 0);
-            cleanCtx.drawImage(img, 0, 0);
-
-            $('welcomePlaceholder').classList.add('hidden');
-            transformContainer.classList.remove('hidden');
-            $('floatingViewBar').classList.remove('hidden');
-
-            // 出力ボタン有効化
-            ['btnPrintA4Desktop', 'btnDownloadDesktop', 'mobilePrintBtn', 'mobileDownloadBtn'].forEach(id => {
-                $(id).disabled = false;
-            });
-
-            // 履歴初期化
-            state.history = [];
-            state.historyIdx = -1;
-            pushHistory();
-
-            // ビューポートにフィット
-            fitToScreen();
-            updateSplitLayout();
-
-            // 初回は有効になっているフィルタを実行
-            runCombinedProcessingPipeline();
-            showToast('画像を読み込みました。フィルタを組み合わせて消去できます', 'info');
-        }
-
-        // --- 比較スプリットスライダー制御 ---
-        function setupDividerEvents() {
-            const updateDividerFromClientX = (clientX) => {
-                const rect = comparisonBox.getBoundingClientRect();
-                const offsetX = clientX - rect.left;
-                let pct = (offsetX / rect.width) * 100;
-                pct = Math.max(0, Math.min(100, pct));
-                state.splitPos = pct;
-                updateSplitLayout();
-            };
-
-            dividerLine.addEventListener('mousedown', (e) => {
-                state.isDraggingDivider = true;
-                e.preventDefault();
-            });
-
-            window.addEventListener('mousemove', (e) => {
-                if (state.isDraggingDivider) {
-                    updateDividerFromClientX(e.clientX);
-                }
-            });
-
-            window.addEventListener('mouseup', () => {
-                state.isDraggingDivider = false;
-            });
-
-            // タッチイベント
-            dividerLine.addEventListener('touchstart', (e) => {
-                state.isDraggingDivider = true;
-            }, { passive: true });
-
-            window.addEventListener('touchmove', (e) => {
-                if (state.isDraggingDivider && e.touches.length) {
-                    updateDividerFromClientX(e.touches[0].clientX);
-                }
-            }, { passive: true });
-
-            window.addEventListener('touchend', () => {
-                state.isDraggingDivider = false;
-            });
-
-            // 表示モード切り替え
-            $('btnViewClean').addEventListener('click', () => setViewMode('cleaned'));
-            $('btnViewSplit').addEventListener('click', () => setViewMode('split'));
-            $('btnViewOrig').addEventListener('click', () => setViewMode('original'));
-        }
-
-        function setViewMode(mode) {
-            state.viewMode = mode;
-            ['btnViewClean', 'btnViewSplit', 'btnViewOrig'].forEach(id => {
-                $(id).className = 'px-2 py-1 rounded-lg bg-slate-800 text-slate-300 text-[11px] font-medium hover:bg-slate-750';
-            });
-            if (mode === 'cleaned') $('btnViewClean').className = 'px-2 py-1 rounded-lg bg-brand-600 text-white text-[11px] font-bold';
-            if (mode === 'split') $('btnViewSplit').className = 'px-2 py-1 rounded-lg bg-brand-600 text-white text-[11px] font-bold';
-            if (mode === 'original') $('btnViewOrig').className = 'px-2 py-1 rounded-lg bg-brand-600 text-white text-[11px] font-bold';
-
-            updateSplitLayout();
-        }
-
-        function updateSplitLayout() {
-            if (!state.imageLoaded) return;
-            if (state.viewMode === 'cleaned') {
-                beforeLayer.style.width = '0%';
-                dividerLine.style.display = 'none';
-            } else if (state.viewMode === 'original') {
-                beforeLayer.style.width = '100%';
-                dividerLine.style.display = 'none';
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
             } else {
-                beforeLayer.style.width = `${state.splitPos}%`;
-                dividerLine.style.display = 'block';
-                dividerLine.style.left = `${state.splitPos}%`;
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
             }
-        }
+          }
 
-        // --- ズーム＆パン（2本指ピンチ操作対応） ---
-        function setupPanZoomGestures() {
-            $('btnZoomIn').addEventListener('click', () => applyZoom(state.zoom + 0.2));
-            $('btnZoomOut').addEventListener('click', () => applyZoom(state.zoom - 0.2));
-            $('btnZoomFit').addEventListener('click', fitToScreen);
+          cvs.width = w;
+          cvs.height = h;
+          const ctx = cvs.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
 
-            // マウスホイールでのズーム
-            viewportArea.addEventListener('wheel', (e) => {
-                if (!state.imageLoaded) return;
-                e.preventDefault();
-                const delta = e.deltaY < 0 ? 0.1 : -0.1;
-                applyZoom(state.zoom + delta);
-            }, { passive: false });
+          const imgData = ctx.getImageData(0, 0, w, h);
+          const data = imgData.data;
 
-            // ドラッグパン操作（Panモード時）
-            viewportArea.addEventListener('mousedown', (e) => {
-                if (state.mode !== 'pan' || !state.imageLoaded || state.isDraggingDivider) return;
-                state.isGesturePanning = true;
-                state.touchLastX = e.clientX;
-                state.touchLastY = e.clientY;
-            });
+          const removePencil = filterPencil.checked;
+          const removeRed = filterRed.checked;
+          const removeShadow = filterShadow.checked;
 
-            window.addEventListener('mousemove', (e) => {
-                if (!state.isGesturePanning) return;
-                state.panX += (e.clientX - state.touchLastX);
-                state.panY += (e.clientY - state.touchLastY);
-                state.touchLastX = e.clientX;
-                state.touchLastY = e.clientY;
-                applyTransform();
-            });
+          const pencilLevel = parseInt(rangePencilStrength.value, 10);
+          const protectThreshold = parseInt(rangeProtect.value, 10); // 印刷黒文字の保護レベル
 
-            window.addEventListener('mouseup', () => {
-                state.isGesturePanning = false;
-            });
+          // 鉛筆の判定しきい値設定
+          let pencilMinLum = 70;
+          let pencilMaxLum = 180;
+          if (pencilLevel === 1) { // 薄め
+            pencilMinLum = 85; pencilMaxLum = 195;
+          } else if (pencilLevel === 3) { // 濃いめ
+            pencilMinLum = 50; pencilMaxLum = 175;
+          }
 
-            // タッチ操作（2本指ピンチ＆パン）
-            viewportArea.addEventListener('touchstart', (e) => {
-                if (!state.imageLoaded || state.isDraggingDivider) return;
-                if (e.touches.length === 2) {
-                    state.isGesturePanning = true;
-                    state.touchStartDist = getTouchDistance(e.touches[0], e.touches[1]);
-                    state.touchStartZoom = state.zoom;
-                } else if (e.touches.length === 1 && state.mode === 'pan') {
-                    state.isGesturePanning = true;
-                    state.touchLastX = e.touches[0].clientX;
-                    state.touchLastY = e.touches[0].clientY;
-                }
-            }, { passive: true });
+          // ピクセルごとの局所スキャン・フィルタリング
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i+1];
+            const b = data[i+2];
 
-            viewportArea.addEventListener('touchmove', (e) => {
-                if (!state.isGesturePanning) return;
-                if (e.touches.length === 2) {
-                    const dist = getTouchDistance(e.touches[0], e.touches[1]);
-                    const ratio = dist / state.touchStartDist;
-                    applyZoom(state.touchStartZoom * ratio);
-                } else if (e.touches.length === 1 && state.mode === 'pan') {
-                    const dx = e.touches[0].clientX - state.touchLastX;
-                    const dy = e.touches[0].clientY - state.touchLastY;
-                    state.panX += dx;
-                    state.panY += dy;
-                    state.touchLastX = e.touches[0].clientX;
-                    state.touchLastY = e.touches[0].clientY;
-                    applyTransform();
-                }
-            }, { passive: true });
+            // 輝度（明るさ）計算
+            const lum = 0.299 * r + 0.587 * g + 0.114 * b;
 
-            viewportArea.addEventListener('touchend', () => {
-                state.isGesturePanning = false;
-            });
-        }
-
-        function getTouchDistance(t1, t2) {
-            const dx = t1.clientX - t2.clientX;
-            const dy = t1.clientY - t2.clientY;
-            return Math.sqrt(dx * dx + dy * dy);
-        }
-
-        function applyZoom(newZoom) {
-            state.zoom = Math.max(0.2, Math.min(3.5, newZoom));
-            $('lblZoomLevel').textContent = `${Math.round(state.zoom * 100)}%`;
-            applyTransform();
-        }
-
-        function fitToScreen() {
-            if (!state.imageLoaded) return;
-            const vpW = viewportArea.clientWidth - 40;
-            const vpH = viewportArea.clientHeight - 40;
-            const scaleX = vpW / state.width;
-            const scaleY = vpH / state.height;
-            state.zoom = Math.min(scaleX, scaleY, 1.0);
-            state.panX = 0;
-            state.panY = 0;
-            $('lblZoomLevel').textContent = `${Math.round(state.zoom * 100)}%`;
-            applyTransform();
-        }
-
-        function applyTransform() {
-            transformContainer.style.transform = `translate(${state.panX}px, ${state.panY}px) scale(${state.zoom})`;
-        }
-
-        // --- 色空間ユーティリティ ---
-        function rgbToHsv(r, g, b) {
-            r /= 255; g /= 255; b /= 255;
-            const max = Math.max(r, g, b), min = Math.min(r, g, b);
-            const d = max - min;
-            let h = 0;
-            const s = max === 0 ? 0 : d / max;
-            const v = max;
-            if (max !== min) {
-                switch (max) {
-                    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-                    case g: h = (b - r) / d + 2; break;
-                    case b: h = (r - g) / d + 4; break;
-                }
-                h /= 6;
-            }
-            return [h * 360, s, v];
-        }
-
-        // --- 局所背景輝度の適応的推定（グリッドサンプリング補間） ---
-        function estimateLocalBackground(src, w, h) {
-            const blockSize = 32;
-            const gridW = Math.ceil(w / blockSize);
-            const gridH = Math.ceil(h / blockSize);
-            const bgGrid = new Float32Array(gridW * gridH);
-
-            for (let gy = 0; gy < gridH; gy++) {
-                for (let gx = 0; gx < gridW; gx++) {
-                    const startX = gx * blockSize;
-                    const startY = gy * blockSize;
-                    const endX = Math.min(w, startX + blockSize);
-                    const endY = Math.min(h, startY + blockSize);
-
-                    let sumLum = 0;
-                    let count = 0;
-                    for (let py = startY; py < endY; py += 2) {
-                        for (let px = startX; px < endX; px += 2) {
-                            const pIdx = (py * w + px) * 4;
-                            const lum = 0.299 * src[pIdx] + 0.587 * src[pIdx+1] + 0.114 * src[pIdx+2];
-                            if (lum > 140) { // 暗いストロークを除外し紙面をサンプリング
-                                sumLum += lum;
-                                count++;
-                            }
-                        }
-                    }
-                    bgGrid[gy * gridW + gx] = count > 0 ? (sumLum / count) : 240;
-                }
+            // 1. 赤ペン・丸付け採点の消去
+            if (removeRed) {
+              const isRed = (r > 110) && (r > g * 1.3) && (r > b * 1.3);
+              const isPinkOrStamp = (r > 130) && (g < 110) && (b < 150);
+              if (isRed || isPinkOrStamp) {
+                data[i] = 255; data[i+1] = 255; data[i+2] = 255;
+                continue;
+              }
             }
 
-            return { bgGrid, gridW, gridH, blockSize };
-        }
+            // 2. 印刷活字・下線の保護チェック
+            // 非常に濃い黒（印刷インク特有）かつRGBの偏りが少ないものは完全保護
+            const isPrintedBlack = (lum < protectThreshold) && (Math.abs(r - g) < 20 && Math.abs(g - b) < 20);
 
-        // --- 複合フィルタ・画像処理パイプライン ---
-        function runCombinedProcessingPipeline() {
-            if (!state.imageLoaded) return;
-
-            const w = state.width;
-            const h = state.height;
-            const srcData = origCtx.getImageData(0, 0, w, h);
-            const src = srcData.data;
-            const outData = cleanCtx.createImageData(w, h);
-            const out = outData.data;
-
-            // スライダーパラメータ
-            const redThreshold = parseInt($('sliderRedSens').value, 10);
-            const pencilSensitivity = parseInt($('sliderPencilSens').value, 10);
-            const printProtectThreshold = parseInt($('sliderPrintProtect').value, 10);
-            const whiteThreshold = parseInt($('sliderWhiteSens').value, 10);
-
-            const activeFilters = state.activeFilters;
-            const doRed = activeFilters.red;
-            const doPencil = activeFilters.pencil;
-            const doBlue = activeFilters.blue;
-            const doPaperWhite = activeFilters.paperWhite;
-
-            // 局所背景グリッドを推定
-            const { bgGrid, gridW, gridH, blockSize } = estimateLocalBackground(src, w, h);
-
-            // 全体推定紙色
-            let globalBgR = 250, globalBgG = 250, globalBgB = 250;
-            let rAcc = 0, gAcc = 0, bAcc = 0, bgCount = 0;
-            for (let i = 0; i < src.length; i += 32) {
-                const lum = 0.299 * src[i] + 0.587 * src[i+1] + 0.114 * src[i+2];
-                if (lum > 180) {
-                    rAcc += src[i]; gAcc += src[i+1]; bAcc += src[i+2];
-                    bgCount++;
-                }
-            }
-            if (bgCount > 0) {
-                globalBgR = Math.round(rAcc / bgCount);
-                globalBgG = Math.round(gAcc / bgCount);
-                globalBgB = Math.round(bAcc / bgCount);
+            // 3. 鉛筆の手書き文字消去
+            if (removePencil && !isPrintedBlack) {
+              // 鉛筆の黒鉛特有の階調（中間グレーでRGBがほぼ等しい）
+              const isGray = (Math.abs(r - g) < 18) && (Math.abs(g - b) < 18);
+              if (isGray && lum >= pencilMinLum && lum <= pencilMaxLum) {
+                data[i] = 255; data[i+1] = 255; data[i+2] = 255;
+                continue;
+              }
             }
 
-            // マスク配列 (1: 消去対象, 0: 保持)
-            const mask = new Uint8Array(w * h);
-
-            for (let y = 0; y < h; y++) {
-                const gy = Math.min(gridH - 1, Math.floor(y / blockSize));
-                for (let x = 0; x < w; x++) {
-                    const gx = Math.min(gridW - 1, Math.floor(x / blockSize));
-                    const idx = y * w + x;
-                    const p = idx * 4;
-
-                    const r = src[p];
-                    const g = src[p+1];
-                    const b = src[p+2];
-                    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-                    const localBgLum = bgGrid[gy * gridW + gx];
-                    let shouldErase = false;
-
-                    // 1. 赤ペン消去
-                    if (doRed && !shouldErase) {
-                        const [hue, sat, val] = rgbToHsv(r, g, b);
-                        const isRedHue = (hue >= 335 || hue <= 25) && sat > 0.20 && val > 0.25;
-                        const diffRed = r - Math.max(g, b);
-                        if (isRedHue || diffRed > (150 - redThreshold)) {
-                            shouldErase = true;
-                        }
-                    }
-
-                    // 2. 青ペン消去
-                    if (doBlue && !shouldErase) {
-                        const [hue, sat, val] = rgbToHsv(r, g, b);
-                        const isBlueHue = (hue >= 180 && hue <= 260) && sat > 0.22 && val > 0.25;
-                        if (isBlueHue || (b - Math.max(r, g)) > 25) {
-                            shouldErase = true;
-                        }
-                    }
-
-                    // 3. 高精度鉛筆消去
-                    // 印刷文字は極端に濃い黒(lum < printProtectThreshold)であるのに対し、
-                    // 鉛筆は紙の局所輝度からの適度な濃度低下(contrastDelta)を持つ
-                    if (doPencil && !shouldErase) {
-                        const contrastDelta = localBgLum - lum;
-                        const isNotPrintedBlack = lum >= printProtectThreshold;
-                        const isPencilStroke = contrastDelta > pencilSensitivity && contrastDelta < (localBgLum - 35);
-                        
-                        // 彩度が低い（黒鉛特有の無彩色）ことを確認
-                        const maxChroma = Math.max(r, g, b) - Math.min(r, g, b);
-                        if (isNotPrintedBlack && isPencilStroke && maxChroma < 32) {
-                            shouldErase = true;
-                        }
-                    }
-
-                    mask[idx] = shouldErase ? 1 : 0;
-                }
+            // 4. 手の影・紙の黄ばみのブリーチ（真っ白化）
+            if (removeShadow) {
+              if (lum > 140) {
+                // 明るい部分は紙面とみなして純白に漂白
+                data[i] = 255; data[i+1] = 255; data[i+2] = 255;
+              } else if (isPrintedBlack) {
+                // 印刷文字はくっきりと黒を引き締める
+                data[i] = Math.max(0, r - 30);
+                data[i+1] = Math.max(0, g - 30);
+                data[i+2] = Math.max(0, b - 30);
+              }
             }
+          }
 
-            // 周囲の紙面サンプリングによるインペイント（穴埋め）
-            for (let y = 0; y < h; y++) {
-                for (let x = 0; x < w; x++) {
-                    const idx = y * w + x;
-                    const p = idx * 4;
+          ctx.putImageData(imgData, 0, 0);
+          resolve(cvs.toDataURL('image/jpeg', 0.92));
+        };
+        img.src = dataUrl;
+      });
+    }
 
-                    if (mask[idx] === 1) {
-                        // 周辺2ピクセルから背景色を採取
-                        let sumR = 0, sumG = 0, sumB = 0, count = 0;
-                        for (let dy = -2; dy <= 2; dy++) {
-                            const ny = y + dy;
-                            if (ny < 0 || ny >= h) continue;
-                            for (let dx = -2; dx <= 2; dx++) {
-                                const nx = x + dx;
-                                if (nx < 0 || nx >= w) continue;
-                                const nIdx = ny * w + nx;
-                                if (mask[nIdx] === 0) {
-                                    const np = nIdx * 4;
-                                    sumR += src[np];
-                                    sumG += src[np+1];
-                                    sumB += src[np+2];
-                                    count++;
-                                }
-                            }
-                        }
+    // 1枚消去の実行
+    btnProcessCurrent.addEventListener('click', async () => {
+      const page = state.pages[state.currentIndex];
+      spinner.classList.remove('hidden');
+      spinner.classList.add('flex');
+      processingText.textContent = `${state.currentIndex + 1}枚目を白紙化中...`;
 
-                        let targetR = count > 0 ? Math.round(sumR / count) : globalBgR;
-                        let targetG = count > 0 ? Math.round(sumG / count) : globalBgG;
-                        let targetB = count > 0 ? Math.round(sumB / count) : globalBgB;
+      try {
+        page.processedDataUrl = await processImageLocally(page.originalDataUrl);
+        page.isProcessed = true;
+        renderUI();
+      } catch (err) {
+        alert('処理中にエラーが発生しました: ' + err.message);
+      } finally {
+        spinner.classList.add('hidden');
+        spinner.classList.remove('flex');
+      }
+    });
 
-                        if (doPaperWhite) {
-                            targetR = 255; targetG = 255; targetB = 255;
-                        }
+    // 全プリント一括消去
+    btnProcessAll.addEventListener('click', async () => {
+      spinner.classList.remove('hidden');
+      spinner.classList.add('flex');
 
-                        out[p] = targetR;
-                        out[p+1] = targetG;
-                        out[p+2] = targetB;
-                        out[p+3] = 255;
-                    } else {
-                        let r = src[p];
-                        let g = src[p+1];
-                        let b = src[p+2];
-
-                        // 影・黄ばみの漂白（白紙化モード）
-                        if (doPaperWhite) {
-                            const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-                            if (lum > whiteThreshold) {
-                                r = 255; g = 255; b = 255;
-                            }
-                        }
-
-                        out[p] = r;
-                        out[p+1] = g;
-                        out[p+2] = b;
-                        out[p+3] = src[p+3];
-                    }
-                }
-            }
-
-            cleanCtx.putImageData(outData, 0, 0);
-            pushHistory();
+      try {
+        for (let i = 0; i < state.pages.length; i++) {
+          processingText.textContent = `一括消去中: ${i + 1} / ${state.pages.length} 枚目...`;
+          state.pages[i].processedDataUrl = await processImageLocally(state.pages[i].originalDataUrl);
+          state.pages[i].isProcessed = true;
         }
+        renderUI();
+      } catch (err) {
+        alert('一括処理中にエラーが発生しました: ' + err.message);
+      } finally {
+        spinner.classList.add('hidden');
+        spinner.classList.remove('flex');
+      }
+    });
 
-        // --- 複数選択トグル＆スライダーUI制御 ---
-        function setupFilterToggles() {
-            const toggleButtons = document.querySelectorAll('.filter-toggle');
+    // まとめてPDF書き出し
+    btnExportPdf.addEventListener('click', () => {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const processedPages = state.pages.filter(p => p.isProcessed);
 
-            const updateToggleStyle = (btn, isActive, filterKey) => {
-                const badge = btn.querySelector('.status-badge');
-                if (isActive) {
-                    badge.textContent = 'ON';
-                    badge.className = 'status-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-500 text-white';
-                    if (filterKey === 'red') {
-                        btn.className = 'filter-toggle w-full px-3 py-2 rounded-xl border transition flex items-center justify-between text-left group bg-rose-500/10 border-rose-500/60 text-rose-200';
-                        badge.className = 'status-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500 text-white';
-                    } else if (filterKey === 'pencil') {
-                        btn.className = 'filter-toggle w-full px-3 py-2 rounded-xl border transition flex items-center justify-between text-left group bg-amber-500/10 border-amber-500/60 text-amber-200';
-                        badge.className = 'status-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-white';
-                    } else if (filterKey === 'blue') {
-                        btn.className = 'filter-toggle w-full px-3 py-2 rounded-xl border transition flex items-center justify-between text-left group bg-blue-500/10 border-blue-500/60 text-blue-200';
-                        badge.className = 'status-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500 text-white';
-                    } else {
-                        btn.className = 'filter-toggle w-full px-3 py-2 rounded-xl border transition flex items-center justify-between text-left group bg-sky-500/10 border-sky-500/60 text-sky-200';
-                        badge.className = 'status-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-500 text-white';
-                    }
-                } else {
-                    badge.textContent = 'OFF';
-                    badge.className = 'status-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700 text-slate-400';
-                    btn.className = 'filter-toggle w-full px-3 py-2 rounded-xl border transition flex items-center justify-between text-left group bg-slate-800/70 border-slate-700/80 text-slate-300';
-                }
-            };
+      if (processedPages.length === 0) {
+        alert('消去処理済みのプリントがありません。先に消去を実行してください。');
+        return;
+      }
 
-            toggleButtons.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const filter = btn.getAttribute('data-filter');
-                    state.activeFilters[filter] = !state.activeFilters[filter];
-                    updateToggleStyle(btn, state.activeFilters[filter], filter);
-                    runCombinedProcessingPipeline();
-                    
-                    const label = btn.querySelector('.text-xs').textContent.trim();
-                    const statusText = state.activeFilters[filter] ? '有効' : '解除';
-                    showToast(`${label} を ${statusText} にしました`, 'info');
-                });
-            });
+      processedPages.forEach((page, index) => {
+        if (index > 0) pdf.addPage();
+        const img = new Image();
+        img.src = page.processedDataUrl;
+        
+        // A4用紙（210 x 297 mm）に余白10mmで均等配置
+        const pageWidth = 210;
+        const pageHeight = 297;
+        const margin = 10;
+        const targetW = pageWidth - margin * 2;
+        const targetH = pageHeight - margin * 2;
+        
+        pdf.addImage(img, 'JPEG', margin, margin, targetW, targetH, undefined, 'FAST');
+      });
 
-            // 鉛筆の濃さクイックボタン
-            const pencilQuickBtns = document.querySelectorAll('.pencil-quick-btn');
-            pencilQuickBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    pencilQuickBtns.forEach(b => {
-                        b.className = 'pencil-quick-btn py-1 rounded-lg text-[11px] font-semibold bg-slate-700 hover:bg-slate-650 text-slate-300';
-                    });
-                    btn.className = 'pencil-quick-btn py-1 rounded-lg text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40';
+      pdf.save(`宿題プリント_解き直し_${Date.now()}.pdf`);
+    });
 
-                    const preset = btn.getAttribute('data-preset');
-                    if (preset === 'light') {
-                        $('sliderPencilSens').value = 28;
-                        $('sliderPrintProtect').value = 65;
-                        $('lblPencilPresetStatus').textContent = '薄め (HB / H)';
-                    } else if (preset === 'medium') {
-                        $('sliderPencilSens').value = 42;
-                        $('sliderPrintProtect').value = 48;
-                        $('lblPencilPresetStatus').textContent = '標準 (B / 2B)';
-                    } else if (preset === 'dark') {
-                        $('sliderPencilSens').value = 62;
-                        $('sliderPrintProtect').value = 35;
-                        $('lblPencilPresetStatus').textContent = '濃いめ (3B〜)';
-                    }
-                    $('lblPencilSens').textContent = $('sliderPencilSens').value;
-                    $('lblPrintProtect').textContent = $('sliderPrintProtect').value;
-
-                    // 鉛筆フィルタを自動ONにして実行
-                    if (!state.activeFilters.pencil) {
-                        state.activeFilters.pencil = true;
-                        const pencilBtn = document.querySelector('.filter-toggle[data-filter="pencil"]');
-                        updateToggleStyle(pencilBtn, true, 'pencil');
-                    }
-                    runCombinedProcessingPipeline();
-                    showToast(`鉛筆設定: ${$('lblPencilPresetStatus').textContent} を適用しました`, 'success');
-                });
-            });
-
-            // スライダー変更検知
-            $('sliderRedSens').addEventListener('input', e => $('lblRedSens').textContent = e.target.value);
-            $('sliderPencilSens').addEventListener('input', e => $('lblPencilSens').textContent = e.target.value);
-            $('sliderPrintProtect').addEventListener('input', e => $('lblPrintProtect').textContent = e.target.value);
-            $('sliderWhiteSens').addEventListener('input', e => $('lblWhiteSens').textContent = e.target.value);
-
-            ['sliderRedSens', 'sliderPencilSens', 'sliderPrintProtect', 'sliderWhiteSens'].forEach(id => {
-                $(id).addEventListener('change', () => runCombinedProcessingPipeline());
-            });
-
-            // モバイル下部ワンタップ消去ボタン
-            $('mobileFilterToggleBtn').addEventListener('click', () => {
-                if (!state.imageLoaded) {
-                    showToast('先にプリントを読み込んでください', 'error');
-                    return;
-                }
-                // 赤ペンと鉛筆の両方をONにして即実行
-                state.activeFilters.red = true;
-                state.activeFilters.pencil = true;
-                updateToggleStyle(document.querySelector('.filter-toggle[data-filter="red"]'), true, 'red');
-                updateToggleStyle(document.querySelector('.filter-toggle[data-filter="pencil"]'), true, 'pencil');
-                runCombinedProcessingPipeline();
-                showToast('赤ペンと鉛筆手書き文字を同時に消去しました', 'success');
-            });
-        }
-
-        // --- 手動消しゴムツール（スタイラス / タッチ対応） ---
-        function setupBrushTool() {
-            const btnPan = $('btnToolPan');
-            const btnBrush = $('btnToolBrush');
-            const mobileEraserBtn = $('mobileEraserToggleBtn');
-            const brushSizeBox = $('brushSizeBox');
-            const brushSizeSlider = $('sliderBrushSize');
-            const brushPointer = $('brushPointer');
-
-            const setToolMode = (mode) => {
-                state.mode = mode;
-                if (mode === 'brush') {
-                    btnBrush.className = 'tool-btn py-2 px-3 rounded-xl bg-brand-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow transition';
-                    btnPan.className = 'tool-btn py-2 px-3 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-750 text-xs font-bold flex items-center justify-center gap-1.5 transition';
-                    brushSizeBox.classList.remove('hidden');
-                    paintCanvas.style.pointerEvents = 'auto';
-                    dividerLine.style.pointerEvents = 'none';
-                    mobileEraserBtn.classList.add('text-brand-400');
-                    updateBrushPointerSize();
-                    showToast('手動消しゴムモード：消したい文字をなぞってください', 'info');
-                } else {
-                    btnPan.className = 'tool-btn py-2 px-3 rounded-xl bg-brand-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow transition';
-                    btnBrush.className = 'tool-btn py-2 px-3 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-750 text-xs font-bold flex items-center justify-center gap-1.5 transition';
-                    brushSizeBox.classList.add('hidden');
-                    paintCanvas.style.pointerEvents = 'none';
-                    dividerLine.style.pointerEvents = 'auto';
-                    brushPointer.classList.add('hidden');
-                    mobileEraserBtn.classList.remove('text-brand-400');
-                }
-            };
-
-            btnPan.addEventListener('click', () => setToolMode('pan'));
-            btnBrush.addEventListener('click', () => setToolMode('brush'));
-            mobileEraserBtn.addEventListener('click', () => {
-                setToolMode(state.mode === 'brush' ? 'pan' : 'brush');
-            });
-
-            brushSizeSlider.addEventListener('input', (e) => {
-                state.brushSize = parseInt(e.target.value, 10);
-                $('lblBrushSize').textContent = `${state.brushSize}px`;
-                updateBrushPointerSize();
-            });
-
-            function updateBrushPointerSize() {
-                const s = state.brushSize * state.zoom;
-                brushPointer.style.width = `${s}px`;
-                brushPointer.style.height = `${s}px`;
-            }
-
-            // ポインター追従
-            paintCanvas.addEventListener('mousemove', (e) => {
-                if (state.mode === 'brush') {
-                    brushPointer.classList.remove('hidden');
-                    brushPointer.style.left = `${e.clientX}px`;
-                    brushPointer.style.top = `${e.clientY}px`;
-                }
-            });
-            paintCanvas.addEventListener('mouseleave', () => brushPointer.classList.add('hidden'));
-
-            // 手動ブラシでの局所適応消去
-            const handleDrawPoint = (clientX, clientY) => {
-                const rect = paintCanvas.getBoundingClientRect();
-                const scaleX = state.width / rect.width;
-                const scaleY = state.height / rect.height;
-                const cx = (clientX - rect.left) * scaleX;
-                const cy = (clientY - rect.top) * scaleY;
-                const r = state.brushSize / 2;
-
-                const minX = Math.max(0, Math.floor(cx - r));
-                const maxX = Math.min(state.width - 1, Math.ceil(cx + r));
-                const minY = Math.max(0, Math.floor(cy - r));
-                const maxY = Math.min(state.height - 1, Math.ceil(cy + r));
-                const blockW = maxX - minX + 1;
-                const blockH = maxY - minY + 1;
-                if (blockW <= 0 || blockH <= 0) return;
-
-                const imgData = cleanCtx.getImageData(minX, minY, blockW, blockH);
-                const px = imgData.data;
-
-                // 周囲の明るい紙色をサンプリング
-                let sumR = 0, sumG = 0, sumB = 0, count = 0;
-                for (let i = 0; i < px.length; i += 4) {
-                    const lum = 0.299 * px[i] + 0.587 * px[i+1] + 0.114 * px[i+2];
-                    if (lum > 180) {
-                        sumR += px[i]; sumG += px[i+1]; sumB += px[i+2];
-                        count++;
-                    }
-                }
-                const fillR = count > 0 ? Math.round(sumR / count) : 255;
-                const fillG = count > 0 ? Math.round(sumG / count) : 255;
-                const fillB = count > 0 ? Math.round(sumB / count) : 255;
-
-                for (let y = minY; y <= maxY; y++) {
-                    for (let x = minX; x <= maxX; x++) {
-                        const distSq = (x - cx) * (x - cx) + (y - cy) * (y - cy);
-                        if (distSq <= r * r) {
-                            const pIdx = ((y - minY) * blockW + (x - minX)) * 4;
-                            px[pIdx] = fillR;
-                            px[pIdx+1] = fillG;
-                            px[pIdx+2] = fillB;
-                        }
-                    }
-                }
-                cleanCtx.putImageData(imgData, minX, minY);
-            };
-
-            paintCanvas.addEventListener('mousedown', (e) => {
-                if (state.mode !== 'brush') return;
-                state.isBrushing = true;
-                handleDrawPoint(e.clientX, e.clientY);
-            });
-
-            window.addEventListener('mousemove', (e) => {
-                if (state.isBrushing && state.mode === 'brush') {
-                    handleDrawPoint(e.clientX, e.clientY);
-                }
-            });
-
-            window.addEventListener('mouseup', () => {
-                if (state.isBrushing) {
-                    state.isBrushing = false;
-                    pushHistory();
-                }
-            });
-
-            // タッチ / Apple Pencil 対応
-            paintCanvas.addEventListener('touchstart', (e) => {
-                if (state.mode !== 'brush' || e.touches.length !== 1) return;
-                state.isBrushing = true;
-                handleDrawPoint(e.touches[0].clientX, e.touches[0].clientY);
-            }, { passive: true });
-
-            paintCanvas.addEventListener('touchmove', (e) => {
-                if (state.isBrushing && state.mode === 'brush' && e.touches.length === 1) {
-                    handleDrawPoint(e.touches[0].clientX, e.touches[0].clientY);
-                }
-            }, { passive: true });
-
-            paintCanvas.addEventListener('touchend', () => {
-                if (state.isBrushing) {
-                    state.isBrushing = false;
-                    pushHistory();
-                }
-            });
-        }
-
-        // --- 履歴スタック（Undo/Redo） ---
-        function pushHistory() {
-            if (!state.imageLoaded) return;
-            const currentImg = cleanCtx.getImageData(0, 0, state.width, state.height);
-            state.history = state.history.slice(0, state.historyIdx + 1);
-            state.history.push(currentImg);
-            if (state.history.length > state.maxHistory) {
-                state.history.shift();
-            } else {
-                state.historyIdx++;
-            }
-            updateUndoRedoStatus();
-        }
-
-        function updateUndoRedoStatus() {
-            $('undoBtn').disabled = state.historyIdx <= 0;
-            $('redoBtn').disabled = state.historyIdx >= state.history.length - 1;
-        }
-
-        $('undoBtn').addEventListener('click', () => {
-            if (state.historyIdx > 0) {
-                state.historyIdx--;
-                cleanCtx.putImageData(state.history[state.historyIdx], 0, 0);
-                updateUndoRedoStatus();
-                showToast('1つ前の状態に戻しました', 'info');
-            }
-        });
-
-        $('redoBtn').addEventListener('click', () => {
-            if (state.historyIdx < state.history.length - 1) {
-                state.historyIdx++;
-                cleanCtx.putImageData(state.history[state.historyIdx], 0, 0);
-                updateUndoRedoStatus();
-                showToast('やり直しました', 'info');
-            }
-        });
-
-        window.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-                e.preventDefault();
-                $('undoBtn').click();
-            } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) {
-                e.preventDefault();
-                $('redoBtn').click();
-            }
-        });
-
-        // --- A4印刷 & 保存 ---
-        function setupExportAndPrint() {
-            const doPrint = () => {
-                if (!state.imageLoaded) return;
-                const printRoot = $('printRoot');
-                printRoot.innerHTML = '';
-                const printImg = document.createElement('img');
-                printImg.src = cleanedCanvas.toDataURL('image/png');
-                printRoot.appendChild(printImg);
-                window.print();
-            };
-
-            const doDownload = () => {
-                if (!state.imageLoaded) return;
-                const link = document.createElement('a');
-                link.download = `homework-cleaned-${Date.now()}.png`;
-                link.href = cleanedCanvas.toDataURL('image/png');
-                link.click();
-                showToast('復元プリントを保存しました', 'success');
-            };
-
-            $('btnPrintA4Desktop').addEventListener('click', doPrint);
-            $('mobilePrintBtn').addEventListener('click', doPrint);
-            $('btnDownloadDesktop').addEventListener('click', doDownload);
-            $('mobileDownloadBtn').addEventListener('click', doDownload);
-        }
-
-        // --- モーダル制御 ---
-        function setupModals() {
-            const setupModal = (openBtn, closeBtn, ackBtn, modal) => {
-                $(openBtn).addEventListener('click', () => $(modal).classList.remove('hidden'));
-                const close = () => $(modal).classList.add('hidden');
-                $(closeBtn).addEventListener('click', close);
-                $(ackBtn).addEventListener('click', close);
-                $(modal).addEventListener('click', (e) => {
-                    if (e.target === $(modal)) close();
-                });
-            };
-
-            setupModal('openDeployGuideBtn', 'closeDeployGuideBtn', 'ackDeployGuideBtn', 'deployGuideModal');
-            setupModal('openInstallGuideBtn', 'closeInstallGuideBtn', 'ackInstallGuideBtn', 'installGuideModal');
-        }
-
-        // --- PWA / オフラインキャッシュ用Service Worker（インライン対応） ---
-        function registerPwaFallback() {
-            if ('serviceWorker' in navigator) {
-                const swCode = `
-                    const CACHE = 'hw-eraser-v2';
-                    self.addEventListener('install', e => self.skipWaiting());
-                    self.addEventListener('activate', e => clients.claim());
-                    self.addEventListener('fetch', e => {
-                        e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
-                    });
-                `;
-                const blob = new Blob([swCode], { type: 'application/javascript' });
-                navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
-            }
-        }
-
-        // --- トースト通知 ---
-        function showToast(text, type = 'info') {
-            const toast = $('toast');
-            const icon = $('toastIcon');
-            $('toastMsg').textContent = text;
-            if (type === 'error') icon.className = 'fa-solid fa-circle-exclamation text-rose-400';
-            else if (type === 'success') icon.className = 'fa-solid fa-circle-check text-emerald-400';
-            else icon.className = 'fa-solid fa-circle-info text-brand-400';
-
-            toast.classList.remove('translate-y-24', 'opacity-0');
-            setTimeout(() => toast.classList.add('translate-y-24', 'opacity-0'), 2600);
-        }
-    </script>
+    // 削除ボタン
+    btnDeleteCurrent.addEventListener('click', () => {
+      if (!confirm('このプリントを削除しますか？')) return;
+      state.pages.splice(state.currentIndex, 1);
+      if (state.currentIndex >= state.pages.length) {
+        state.currentIndex = Math.max(0, state.pages.length - 1);
+      }
+      renderUI();
+    });
+  </script>
 </body>
 </html>
