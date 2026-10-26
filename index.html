@@ -77,7 +77,7 @@
     <div id="loader" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex flex-col items-center justify-center z-50 text-white p-4">
       <div class="w-12 h-12 border-4 border-indigo-400 border-t-transparent rounded-full animate-spin mb-4"></div>
       <p id="loader-text" class="font-bold text-sm mb-1">AIが手書き箇所を解析中...</p>
-      <p class="text-xs text-slate-300">下線と印刷文字を保護して白紙化しています</p>
+      <p id="loader-subtext" class="text-xs text-slate-300">下線と印刷文字を保護して白紙化しています</p>
     </div>
 
   </main>
@@ -104,6 +104,7 @@
     const mainCtx = mainCanvas.getContext('2d');
     const loader = document.getElementById('loader');
     const loaderText = document.getElementById('loader-text');
+    const loaderSubtext = document.getElementById('loader-subtext');
     const btnDownload = document.getElementById('btn-download');
     const btnPrint = document.getElementById('btn-print');
     const keyStatus = document.getElementById('key-status');
@@ -143,6 +144,7 @@
 
     async function handleFile(file) {
       loaderText.innerText = "写真を読み込み中...";
+      loaderSubtext.innerText = "画像を最適な解像度に調整しています";
       loader.classList.remove('hidden');
 
       const img = new Image();
@@ -151,7 +153,7 @@
       reader.onload = async (e) => {
         img.onload = async () => {
           let w = img.width, h = img.height;
-          const maxDim = 1400;
+          const maxDim = 1200;
           if (w > maxDim || h > maxDim) {
             if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
             else { w = Math.round((w * maxDim) / h); h = maxDim; }
@@ -169,57 +171,89 @@
 
     async function runAnalysis(base64Data, width, height) {
       loaderText.innerText = "AIが手書きと赤ペン箇所を検出中...";
+      loaderSubtext.innerText = "下線と印刷文字を保護して白紙化しています";
 
-      const prompt = `この画像内の【手書き文字（鉛筆・ペン）】および【赤ペン・朱色スタンプ・丸付け】のバウンディングボックス一覧をJSONのみで返してください。
+      const prompt = `この画像内の【手書き文字（鉛筆・ペン）】および【赤ペン・朱色スタンプ・丸付け】のバウンディングボックス一覧をJSON形式で返してください。
 【除外（消してはいけないもの）】
 - 印刷された教科書名、設問文、Task、Goalなどの活字
 - 罫線、下線（アンダーライン）
-【出力フォーマット】
-{"boxes": [{"ymin": 0〜1000, "xmin": 0〜1000, "ymax": 0〜1000, "xmax": 0〜1000}]}`;
+【出力フォーマット（必ずこのキー構造にしてください）】
+{"boxes": [{"ymin": 0, "xmin": 0, "ymax": 1000, "xmax": 1000}]}`;
 
-      try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{
-              parts: [
-                { text: prompt },
-                {
-                  inline_data: {
-                    mime_type: "image/jpeg",
-                    data: base64Data.split(',')[1]
+      const candidateModels = [
+        "gemini-2.0-flash",
+        "gemini-1.5-flash"
+      ];
+
+      let lastError = null;
+      let boxes = [];
+
+      for (let model of candidateModels) {
+        try {
+          loaderSubtext.innerText = `AIエンジン（${model}）で解析しています...`;
+          
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { text: prompt },
+                  {
+                    inline_data: {
+                      mime_type: "image/jpeg",
+                      data: base64Data.split(',')[1]
+                    }
                   }
-                }
-              ]
-            }]
-          })
-        });
+                ]
+              }],
+              generationConfig: {
+                response_mime_type: "application/json"
+              }
+            })
+          });
 
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.error?.message || "通信エラーが発生しました");
+          if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error?.message || `HTTP ${res.status}`);
+          }
+
+          const data = await res.json();
+          let rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+          
+          // マークダウンや余計な空白を徹底除去してパース
+          rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+          const firstBrace = rawText.indexOf('{');
+          const lastBrace = rawText.lastIndexOf('}');
+          if (firstBrace !== -1 && lastBrace !== -1) {
+            rawText = rawText.substring(firstBrace, lastBrace + 1);
+          }
+
+          const parsed = JSON.parse(rawText);
+          boxes = parsed.boxes || [];
+
+          lastError = null;
+          break;
+
+        } catch (err) {
+          console.warn(`${model} 試行エラー:`, err);
+          lastError = err;
         }
-
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-        
-        // JSON部分を安全に抽出
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        const result = jsonMatch ? JSON.parse(jsonMatch[0]) : { boxes: [] };
-
-        loaderText.innerText = "下線を残して手書きを消去中...";
-        applyErase(result.boxes || [], width, height);
-
-        dropZone.classList.add('hidden');
-        resultWrapper.classList.remove('hidden');
-        btnDownload.classList.remove('hidden');
-
-      } catch (err) {
-        alert('エラー: ' + err.message);
-      } finally {
-        loader.classList.add('hidden');
       }
+
+      if (lastError && boxes.length === 0) {
+        alert('解析エラーが発生しました。もう一度お試しください。\n詳細: ' + lastError.message);
+        loader.classList.add('hidden');
+        return;
+      }
+
+      loaderText.innerText = "下線を残して手書きを消去中...";
+      applyErase(boxes, width, height);
+
+      dropZone.classList.add('hidden');
+      resultWrapper.classList.remove('hidden');
+      btnDownload.classList.remove('hidden');
+      loader.classList.add('hidden');
     }
 
     function applyErase(boxes, w, h) {
@@ -247,7 +281,7 @@
             if (x < 0 || x >= w) continue;
             const idx = (y * w + x) * 4;
             const lum = 0.299 * d[idx] + 0.587 * d[idx + 1] + 0.114 * d[idx + 2];
-            // 下線や印刷線の漆黒は残し、手書きのみ白に置き換え
+            // 罫線・下線の漆黒は残し、手書きのみ白に置き換え
             if (lum >= 50) {
               d[idx] = 255; d[idx + 1] = 255; d[idx + 2] = 255;
             }
