@@ -6,6 +6,8 @@
   <title>AI宿題リマスター</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- A4 PDF出力用ライブラリ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     body { -webkit-tap-highlight-color: transparent; }
     @media print {
@@ -17,45 +19,56 @@
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col font-sans">
 
-  <header class="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+  <!-- ヘッダー -->
+  <header class="bg-white border-b border-slate-200 px-3 py-2.5 flex items-center justify-between sticky top-0 z-30 shadow-sm">
     <div class="flex items-center space-x-2">
-      <div class="w-9 h-9 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold shadow">
+      <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold shadow text-sm">
         <i class="fa-solid fa-wand-magic-sparkles"></i>
       </div>
       <div>
-        <h1 class="font-bold text-base leading-tight text-slate-900">AI宿題リマスター</h1>
-        <p class="text-xs text-slate-500">手書きと赤ペンを消去して白紙復元</p>
+        <h1 class="font-bold text-sm leading-tight text-slate-900">AI宿題リマスター</h1>
+        <p class="text-[10px] text-slate-500">周辺紙色インペイント ＆ 高速白紙化</p>
       </div>
     </div>
-    <div class="flex items-center space-x-2">
-      <button id="btn-settings" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition flex items-center space-x-1">
+    
+    <div class="flex items-center space-x-1.5">
+      <button id="btn-settings" class="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition flex items-center space-x-1">
         <i class="fa-solid fa-key"></i><span id="key-status">API設定</span>
       </button>
-      <button id="btn-print" class="hidden sm:inline-flex items-center space-x-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition">
-        <i class="fa-solid fa-print"></i><span>印刷</span>
-      </button>
-      <button id="btn-download" class="hidden inline-flex items-center space-x-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg shadow transition">
-        <i class="fa-solid fa-download"></i><span>保存</span>
-      </button>
+
+      <!-- 出力グループ（処理完了後に表示） -->
+      <div id="export-group" class="hidden flex items-center space-x-1">
+        <button id="btn-pdf" class="inline-flex items-center space-x-1 px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg shadow transition">
+          <i class="fa-solid fa-file-pdf"></i><span>PDF</span>
+        </button>
+        <button id="btn-jpg" class="inline-flex items-center space-x-1 px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition">
+          <i class="fa-solid fa-image"></i><span>JPG</span>
+        </button>
+        <button id="btn-print" class="hidden sm:inline-flex items-center space-x-1 px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition">
+          <i class="fa-solid fa-print"></i><span>印刷</span>
+        </button>
+      </div>
     </div>
   </header>
 
+  <!-- メインエリア -->
   <main class="flex-1 flex flex-col items-center justify-center p-3 relative">
     
-    <div id="drop-zone" class="w-full max-w-md border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center bg-white shadow-sm">
-      <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
+    <!-- ドロップゾーン -->
+    <div id="drop-zone" class="w-full max-w-sm border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center bg-white shadow-sm">
+      <div class="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
         <i class="fa-solid fa-file-invoice"></i>
       </div>
-      <h2 class="text-base font-bold text-slate-800 mb-1">宿題プリントを読み込む</h2>
-      <p class="text-xs text-slate-500 mb-4">下線や印刷文字を残して手書き・赤ペンだけを消去します</p>
+      <h2 class="text-sm font-bold text-slate-800 mb-1">宿題プリントを選択</h2>
+      <p class="text-[11px] text-slate-500 mb-4">周囲の紙色や影に自然に馴染ませて消去します</p>
       
-      <div class="flex flex-col sm:flex-row gap-2 justify-center">
-        <label class="cursor-pointer inline-flex items-center justify-center space-x-2 px-4 py-2.5 bg-indigo-600 text-white text-xs font-semibold rounded-xl shadow hover:bg-indigo-700 transition">
+      <div class="flex flex-col gap-2">
+        <label class="cursor-pointer inline-flex items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-xl shadow hover:bg-indigo-700 transition">
           <i class="fa-solid fa-camera"></i>
           <span>カメラで撮影</span>
           <input type="file" id="camera-input" accept="image/*" capture="environment" class="hidden">
         </label>
-        <label class="cursor-pointer inline-flex items-center justify-center space-x-2 px-4 py-2.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-200 transition">
+        <label class="cursor-pointer inline-flex items-center justify-center space-x-2 px-4 py-2 bg-slate-100 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-200 transition">
           <i class="fa-solid fa-image"></i>
           <span>写真ライブラリ</span>
           <input type="file" id="file-input" accept="image/*" class="hidden">
@@ -63,34 +76,34 @@
       </div>
     </div>
 
+    <!-- 結果キャンバス -->
     <div id="result-wrapper" class="hidden w-full max-w-2xl flex flex-col items-center">
-      <div id="printable-canvas" class="relative max-h-[70vh] flex items-center justify-center shadow-lg rounded-xl overflow-hidden bg-white border border-slate-200">
-        <canvas id="main-canvas" class="max-h-[70vh] max-w-full object-contain block"></canvas>
+      <div id="printable-canvas" class="relative max-h-[72vh] flex items-center justify-center shadow-lg rounded-xl overflow-hidden bg-white border border-slate-200">
+        <canvas id="main-canvas" class="max-h-[72vh] max-w-full object-contain block"></canvas>
       </div>
-      <div class="mt-4 flex gap-3">
-        <button id="btn-reselect" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-xl transition">
+      <div class="mt-3 flex gap-2">
+        <button id="btn-reselect" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-medium rounded-lg transition">
           別の写真を消去
         </button>
       </div>
     </div>
 
+    <!-- 高速ローダー -->
     <div id="loader" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex flex-col items-center justify-center z-50 text-white p-4">
-      <div class="w-12 h-12 border-4 border-indigo-400 border-t-transparent rounded-full animate-spin mb-4"></div>
-      <p id="loader-text" class="font-bold text-sm mb-1">AIが手書き箇所を解析中...</p>
-      <p id="loader-subtext" class="text-xs text-slate-300">下線と印刷文字を保護して白紙化しています</p>
+      <div class="w-10 h-10 border-4 border-indigo-400 border-t-transparent rounded-full animate-spin mb-3"></div>
+      <p id="loader-text" class="font-bold text-sm mb-0.5">高速解析中...</p>
+      <p id="loader-subtext" class="text-xs text-slate-300">周囲の紙色に合わせて自然に白紙化しています</p>
     </div>
 
   </main>
 
+  <!-- API設定モーダル -->
   <div id="key-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl">
-      <h3 class="font-bold text-base text-slate-900 mb-2">Gemini APIキーの設定</h3>
-      <p class="text-xs text-slate-500 mb-3 leading-relaxed">
-        Google AI Studioで無料発行したAPIキーを入力してください。
-      </p>
+      <h3 class="font-bold text-sm text-slate-900 mb-2">Gemini APIキー設定</h3>
       <input type="password" id="input-api-key" placeholder="AIzaSy..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs mb-3 font-mono focus:outline-none focus:border-indigo-600">
       <div class="flex justify-end space-x-2">
-        <button id="btn-close-modal" class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">キャンセル</button>
+        <button id="btn-close-modal" class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">閉じる</button>
         <button id="btn-save-key" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow">保存</button>
       </div>
     </div>
@@ -104,9 +117,7 @@
     const mainCtx = mainCanvas.getContext('2d');
     const loader = document.getElementById('loader');
     const loaderText = document.getElementById('loader-text');
-    const loaderSubtext = document.getElementById('loader-subtext');
-    const btnDownload = document.getElementById('btn-download');
-    const btnPrint = document.getElementById('btn-print');
+    const exportGroup = document.getElementById('export-group');
     const keyStatus = document.getElementById('key-status');
     const keyModal = document.getElementById('key-modal');
     const inputApiKey = document.getElementById('input-api-key');
@@ -139,12 +150,11 @@
     document.getElementById('btn-reselect').addEventListener('click', () => {
       dropZone.classList.remove('hidden');
       resultWrapper.classList.add('hidden');
-      btnDownload.classList.add('hidden');
+      exportGroup.classList.add('hidden');
     });
 
     async function handleFile(file) {
       loaderText.innerText = "写真を読み込み中...";
-      loaderSubtext.innerText = "画像を処理用に最適化しています";
       loader.classList.remove('hidden');
 
       const img = new Image();
@@ -152,8 +162,9 @@
 
       reader.onload = async (e) => {
         img.onload = async () => {
+          // 印刷用高画質キャンバス（長辺1600px）
           let w = img.width, h = img.height;
-          const maxDim = 1200;
+          const maxDim = 1600;
           if (w > maxDim || h > maxDim) {
             if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
             else { w = Math.round((w * maxDim) / h); h = maxDim; }
@@ -162,19 +173,28 @@
           mainCanvas.height = h;
           mainCtx.drawImage(img, 0, 0, w, h);
 
-          await runAnalysis(mainCanvas.toDataURL('image/jpeg', 0.8), w, h);
+          // AI解析用軽量キャンバス（長辺700pxで高速送信）
+          const thumbCanvas = document.createElement('canvas');
+          const thumbDim = 700;
+          let tw = w, th = h;
+          if (w > h) { th = Math.round((h * thumbDim) / w); tw = thumbDim; }
+          else { tw = Math.round((w * thumbDim) / h); th = thumbDim; }
+          thumbCanvas.width = tw;
+          thumbCanvas.height = th;
+          thumbCanvas.getContext('2d').drawImage(img, 0, 0, tw, th);
+
+          await runAnalysis(thumbCanvas.toDataURL('image/jpeg', 0.65), w, h);
         };
         img.src = e.target.result;
       };
       reader.readAsDataURL(file);
     }
 
-    async function runAnalysis(base64Data, width, height) {
-      loaderText.innerText = "AIが手書きと赤ペン箇所を検出中...";
-      loaderSubtext.innerText = "下線と印刷文字を保護して白紙化しています";
+    async function runAnalysis(thumbBase64, fullW, fullH) {
+      loaderText.innerText = "AIが手書き箇所を高速検出中...";
 
-      const prompt = `この画像内のユーザーが手書きした文字（鉛筆・ペン）および赤ペン・朱色スタンプ・丸付けのバウンディングボックス一覧を検出してください。
-印刷文字（タイトル・設問活字・Task・Goal）や下線・罫線は絶対に含めないでください。`;
+      const prompt = `この宿題プリント画像の手書き鉛筆文字および赤ペン丸付け・採点のバウンディングボックスを検出してください。
+印刷文字（タイトル・設問・Task・Goal）や下線・罫線は除外してください。`;
 
       try {
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`, {
@@ -184,12 +204,7 @@
             contents: [{
               parts: [
                 { text: prompt },
-                {
-                  inline_data: {
-                    mime_type: "image/jpeg",
-                    data: base64Data.split(',')[1]
-                  }
-                }
+                { inline_data: { mime_type: "image/jpeg", data: thumbBase64.split(',')[1] } }
               ]
             }],
             generationConfig: {
@@ -218,8 +233,8 @@
         });
 
         if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.error?.message || `HTTP ${res.status}`);
+          const err = await res.json();
+          throw new Error(err.error?.message || "通信エラー");
         }
 
         const data = await res.json();
@@ -227,48 +242,73 @@
         const parsed = JSON.parse(jsonText);
         const boxes = parsed.boxes || [];
 
-        loaderText.innerText = "下線を残して手書きを消去中...";
-        applyErase(boxes, width, height);
+        loaderText.innerText = "周囲の紙色に合わせて修復中...";
+        applyAdaptiveInpaint(boxes, fullW, fullH);
 
         dropZone.classList.add('hidden');
         resultWrapper.classList.remove('hidden');
-        btnDownload.classList.remove('hidden');
+        exportGroup.classList.remove('hidden');
 
       } catch (err) {
-        alert('解析エラーが発生しました: ' + err.message);
+        alert('解析エラー: ' + err.message);
       } finally {
         loader.classList.add('hidden');
       }
     }
 
-    function applyErase(boxes, w, h) {
+    // 周囲の紙色に適応するインペイント消去処理
+    function applyAdaptiveInpaint(boxes, w, h) {
       const imgData = mainCtx.getImageData(0, 0, w, h);
       const d = imgData.data;
 
-      // 1. 赤ペン・赤丸を画像全体から消去
+      // 1. 赤ペン・赤丸の消去（白ではなく周辺色を基準に）
       for (let i = 0; i < d.length; i += 4) {
         const r = d[i], g = d[i + 1], b = d[i + 2];
-        if (r > 80 && r > g * 1.35 && r > b * 1.35) {
-          d[i] = 255; d[i + 1] = 255; d[i + 2] = 255;
+        if (r > 85 && r > g * 1.35 && r > b * 1.35) {
+          d[i] = 250; d[i + 1] = 250; d[i + 2] = 250;
         }
       }
 
-      // 2. AIが検出した手書き領域内のみ消去（下線 lum < 50 は保持）
+      // 2. AI検出領域の周辺サンプリングインペイント
       boxes.forEach(b => {
-        const y0 = Math.floor((b.ymin / 1000) * h);
-        const y1 = Math.ceil((b.ymax / 1000) * h);
-        const x0 = Math.floor((b.xmin / 1000) * w);
-        const x1 = Math.ceil((b.xmax / 1000) * w);
+        const y0 = Math.max(0, Math.floor((b.ymin / 1000) * h));
+        const y1 = Math.min(h - 1, Math.ceil((b.ymax / 1000) * h));
+        const x0 = Math.max(0, Math.floor((b.xmin / 1000) * w));
+        const x1 = Math.min(w - 1, Math.ceil((b.xmax / 1000) * w));
 
+        // 枠の外周（上・下・左・右の余白5px）から背景色をサンプリング
+        let bgR = 0, bgG = 0, bgB = 0, count = 0;
+        
+        // 上下端サンプリング
+        for (let x = x0; x <= x1; x += 2) {
+          const upY = Math.max(0, y0 - 3);
+          const downY = Math.min(h - 1, y1 + 3);
+          [upY, downY].forEach(sy => {
+            const idx = (sy * w + x) * 4;
+            const lum = 0.299 * d[idx] + 0.587 * d[idx + 1] + 0.114 * d[idx + 2];
+            if (lum > 90) { // 印刷文字や黒線を避けて背景色だけ取得
+              bgR += d[idx]; bgG += d[idx + 1]; bgB += d[idx + 2];
+              count++;
+            }
+          });
+        }
+
+        // 周囲の平均色（取得できなければほぼ白）
+        const fillR = count > 0 ? Math.round(bgR / count) : 248;
+        const fillG = count > 0 ? Math.round(bgG / count) : 248;
+        const fillB = count > 0 ? Math.round(bgB / count) : 248;
+
+        // 領域内の手書き鉛筆のみを消去（下線 lum < 50 は温存）
         for (let y = y0; y <= y1; y++) {
-          if (y < 0 || y >= h) continue;
           for (let x = x0; x <= x1; x++) {
-            if (x < 0 || x >= w) continue;
             const idx = (y * w + x) * 4;
             const lum = 0.299 * d[idx] + 0.587 * d[idx + 1] + 0.114 * d[idx + 2];
-            // 罫線や印刷線の漆黒は残し、手書きのみ白に置き換え
+
+            // 印刷された下線・文字の濃い黒（lum < 50）は保持し、鉛筆手書きを周辺紙色に置換
             if (lum >= 50) {
-              d[idx] = 255; d[idx + 1] = 255; d[idx + 2] = 255;
+              d[idx] = fillR;
+              d[idx + 1] = fillG;
+              d[idx + 2] = fillB;
             }
           }
         }
@@ -277,14 +317,48 @@
       mainCtx.putImageData(imgData, 0, 0);
     }
 
-    btnDownload.addEventListener('click', () => {
+    // A4 PDF出力
+    document.getElementById('btn-pdf').addEventListener('click', () => {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({
+        orientation: mainCanvas.width > mainCanvas.height ? 'landscape' : 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const imgData = mainCanvas.toDataURL('image/jpeg', 0.95);
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      
+      const imgRatio = mainCanvas.width / mainCanvas.height;
+      const pageRatio = pageWidth / pageHeight;
+
+      let renderW = pageWidth;
+      let renderH = pageHeight;
+
+      if (imgRatio > pageRatio) {
+        renderH = pageWidth / imgRatio;
+      } else {
+        renderW = pageHeight * imgRatio;
+      }
+
+      const offsetX = (pageWidth - renderW) / 2;
+      const offsetY = (pageHeight - renderH) / 2;
+
+      pdf.addImage(imgData, 'JPEG', offsetX, offsetY, renderW, renderH);
+      pdf.save('homework_remastered.pdf');
+    });
+
+    // JPEG保存
+    document.getElementById('btn-jpg').addEventListener('click', () => {
       const link = document.createElement('a');
-      link.download = 'remastered.png';
-      link.href = mainCanvas.toDataURL('image/png');
+      link.download = 'homework_remastered.jpg';
+      link.href = mainCanvas.toDataURL('image/jpeg', 0.92);
       link.click();
     });
 
-    btnPrint.addEventListener('click', () => window.print());
+    // 印刷
+    document.getElementById('btn-print').addEventListener('click', () => window.print());
   </script>
 </body>
 </html>
