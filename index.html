@@ -173,16 +173,11 @@
       loaderText.innerText = "AIが手書きと赤ペン箇所を検出中...";
       loaderSubtext.innerText = "下線と印刷文字を保護して白紙化しています";
 
-      const prompt = `この画像内の【手書き文字（鉛筆・ペン）】および【赤ペン・朱色スタンプ・丸付け】のバウンディングボックス一覧をJSON形式で返してください。
-【除外（消してはいけないもの）】
-- 印刷された教科書名、設問文、Task、Goalなどの活字
-- 罫線、下線（アンダーライン）
-【出力フォーマット（必ずこのキー構造にしてください）】
-{"boxes": [{"ymin": 0, "xmin": 0, "ymax": 1000, "xmax": 1000}]}`;
+      const prompt = `この画像内のユーザーが手書きした文字（鉛筆・ペン）および赤ペン・朱色スタンプ・丸付けのバウンディングボックス一覧を検出してください。
+印刷文字（タイトル・設問活字・Task・Goal）や下線・罫線は絶対に含めないでください。`;
 
       try {
-        // 現在正式提供されている gemini-2.0-flash を直接指定
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -198,7 +193,26 @@
               ]
             }],
             generationConfig: {
-              response_mime_type: "application/json"
+              response_mime_type: "application/json",
+              response_schema: {
+                type: "OBJECT",
+                properties: {
+                  boxes: {
+                    type: "ARRAY",
+                    items: {
+                      type: "OBJECT",
+                      properties: {
+                        ymin: { type: "INTEGER" },
+                        xmin: { type: "INTEGER" },
+                        ymax: { type: "INTEGER" },
+                        xmax: { type: "INTEGER" }
+                      },
+                      required: ["ymin", "xmin", "ymax", "xmax"]
+                    }
+                  }
+                },
+                required: ["boxes"]
+              }
             }
           })
         });
@@ -209,16 +223,8 @@
         }
 
         const data = await res.json();
-        let rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-        
-        rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-        const firstBrace = rawText.indexOf('{');
-        const lastBrace = rawText.lastIndexOf('}');
-        if (firstBrace !== -1 && lastBrace !== -1) {
-          rawText = rawText.substring(firstBrace, lastBrace + 1);
-        }
-
-        const parsed = JSON.parse(rawText);
+        const jsonText = data.candidates?.[0]?.content?.parts?.[0]?.text || '{"boxes":[]}';
+        const parsed = JSON.parse(jsonText);
         const boxes = parsed.boxes || [];
 
         loaderText.innerText = "下線を残して手書きを消去中...";
@@ -247,7 +253,7 @@
         }
       }
 
-      // 2. AIが検出した手書き領域内だけを消去（下線 lum < 50 は保持）
+      // 2. AIが検出した手書き領域内のみ消去（下線 lum < 50 は保持）
       boxes.forEach(b => {
         const y0 = Math.floor((b.ymin / 1000) * h);
         const y1 = Math.ceil((b.ymax / 1000) * h);
@@ -260,7 +266,7 @@
             if (x < 0 || x >= w) continue;
             const idx = (y * w + x) * 4;
             const lum = 0.299 * d[idx] + 0.587 * d[idx + 1] + 0.114 * d[idx + 2];
-            // 罫線・下線の漆黒は残し、手書きのみ白に置き換え
+            // 罫線や印刷線の漆黒は残し、手書きのみ白に置き換え
             if (lum >= 50) {
               d[idx] = 255; d[idx + 1] = 255; d[idx + 2] = 255;
             }
