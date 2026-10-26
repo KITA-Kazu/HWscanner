@@ -3,40 +3,40 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>AI宿題リマスター</title>
+  <title>宿題リマスター - 囲み瞬時消去</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- A4 PDF出力用ライブラリ -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    body { -webkit-tap-highlight-color: transparent; }
+    body { touch-action: none; -webkit-tap-highlight-color: transparent; }
+    #canvas-container { touch-action: none; user-select: none; }
     @media print {
       body * { visibility: hidden; }
-      #printable-canvas, #printable-canvas * { visibility: visible; }
-      #printable-canvas { position: absolute; left: 0; top: 0; width: 100%; margin: 0; }
+      #view-canvas, #view-canvas * { visibility: visible; }
+      #view-canvas { position: absolute; left: 0; top: 0; width: 100%; margin: 0; }
     }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col font-sans">
+<body class="bg-slate-100 text-slate-800 h-screen flex flex-col font-sans select-none overflow-hidden">
 
   <!-- ヘッダー -->
-  <header class="bg-white border-b border-slate-200 px-3 py-2.5 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+  <header class="bg-white border-b border-slate-200 px-3 py-2 flex items-center justify-between shrink-0 z-30 shadow-sm">
     <div class="flex items-center space-x-2">
-      <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold shadow text-sm">
-        <i class="fa-solid fa-wand-magic-sparkles"></i>
+      <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold shadow text-sm">
+        <i class="fa-solid fa-bolt"></i>
       </div>
       <div>
-        <h1 class="font-bold text-sm leading-tight text-slate-900">AI宿題リマスター</h1>
-        <p class="text-[10px] text-slate-500">周辺紙色インペイント ＆ 高速白紙化</p>
+        <h1 class="font-bold text-sm leading-tight text-slate-900">宿題リマスター</h1>
+        <p class="text-[10px] text-slate-500">囲むだけで下線を残して瞬時消去</p>
       </div>
     </div>
     
     <div class="flex items-center space-x-1.5">
-      <button id="btn-settings" class="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition flex items-center space-x-1">
-        <i class="fa-solid fa-key"></i><span id="key-status">API設定</span>
+      <button id="btn-undo" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg disabled:opacity-40 disabled:pointer-events-none transition flex items-center space-x-1" disabled>
+        <i class="fa-solid fa-rotate-left"></i><span>元に戻す</span>
       </button>
 
-      <!-- 出力グループ（処理完了後に表示） -->
+      <!-- 出力グループ -->
       <div id="export-group" class="hidden flex items-center space-x-1">
         <button id="btn-pdf" class="inline-flex items-center space-x-1 px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg shadow transition">
           <i class="fa-solid fa-file-pdf"></i><span>PDF</span>
@@ -51,19 +51,25 @@
     </div>
   </header>
 
-  <!-- メインエリア -->
-  <main class="flex-1 flex flex-col items-center justify-center p-3 relative">
+  <!-- ガイドバナー（操作案内） -->
+  <div id="guide-banner" class="hidden bg-blue-50 border-b border-blue-200 px-3 py-1.5 text-center text-xs text-blue-700 flex items-center justify-center space-x-1 shrink-0">
+    <i class="fa-solid fa-hand-pointer text-blue-500"></i>
+    <span>消したい手書きの範囲を<strong>指やペンで四角くドラッグ</strong>してください（下線は残ります）</span>
+  </div>
+
+  <!-- メイン表示エリア -->
+  <main class="flex-1 relative flex items-center justify-center p-2 bg-slate-200 overflow-hidden">
     
-    <!-- ドロップゾーン -->
+    <!-- 未読込時 -->
     <div id="drop-zone" class="w-full max-w-sm border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center bg-white shadow-sm">
-      <div class="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
+      <div class="w-14 h-14 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
         <i class="fa-solid fa-file-invoice"></i>
       </div>
       <h2 class="text-sm font-bold text-slate-800 mb-1">宿題プリントを選択</h2>
-      <p class="text-[11px] text-slate-500 mb-4">周囲の紙色や影に自然に馴染ませて消去します</p>
+      <p class="text-[11px] text-slate-500 mb-4">赤ペンは自動消去。消したい箇所を囲むだけで0秒で白紙化します</p>
       
       <div class="flex flex-col gap-2">
-        <label class="cursor-pointer inline-flex items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-xl shadow hover:bg-indigo-700 transition">
+        <label class="cursor-pointer inline-flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white text-xs font-semibold rounded-xl shadow hover:bg-blue-700 transition">
           <i class="fa-solid fa-camera"></i>
           <span>カメラで撮影</span>
           <input type="file" id="camera-input" accept="image/*" capture="environment" class="hidden">
@@ -76,261 +82,292 @@
       </div>
     </div>
 
-    <!-- 結果キャンバス -->
-    <div id="result-wrapper" class="hidden w-full max-w-2xl flex flex-col items-center">
-      <div id="printable-canvas" class="relative max-h-[72vh] flex items-center justify-center shadow-lg rounded-xl overflow-hidden bg-white border border-slate-200">
-        <canvas id="main-canvas" class="max-h-[72vh] max-w-full object-contain block"></canvas>
+    <!-- キャンバス領域 -->
+    <div id="canvas-container" class="hidden relative w-full h-full flex items-center justify-center">
+      <div class="relative max-h-full max-w-full flex items-center justify-center shadow-md rounded bg-white">
+        <!-- 描画用キャンバス -->
+        <canvas id="view-canvas" class="max-w-full max-h-[82vh] object-contain block"></canvas>
+        <!-- 範囲選択用オーバーレイキャンバス -->
+        <canvas id="select-canvas" class="absolute inset-0 w-full h-full pointer-events-auto"></canvas>
       </div>
-      <div class="mt-3 flex gap-2">
-        <button id="btn-reselect" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-medium rounded-lg transition">
-          別の写真を消去
-        </button>
-      </div>
-    </div>
 
-    <!-- 高速ローダー -->
-    <div id="loader" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex flex-col items-center justify-center z-50 text-white p-4">
-      <div class="w-10 h-10 border-4 border-indigo-400 border-t-transparent rounded-full animate-spin mb-3"></div>
-      <p id="loader-text" class="font-bold text-sm mb-0.5">高速解析中...</p>
-      <p id="loader-subtext" class="text-xs text-slate-300">周囲の紙色に合わせて自然に白紙化しています</p>
+      <!-- 比較ボタン（押している間元画像を表示） -->
+      <button id="btn-compare" class="absolute top-2 right-2 px-3 py-1.5 bg-slate-900/80 hover:bg-slate-900 text-white text-xs rounded-full shadow transition flex items-center space-x-1 select-none z-10">
+        <i class="fa-solid fa-eye"></i><span>長押しで元画像</span>
+      </button>
     </div>
 
   </main>
 
-  <!-- API設定モーダル -->
-  <div id="key-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl">
-      <h3 class="font-bold text-sm text-slate-900 mb-2">Gemini APIキー設定</h3>
-      <input type="password" id="input-api-key" placeholder="AIzaSy..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs mb-3 font-mono focus:outline-none focus:border-indigo-600">
-      <div class="flex justify-end space-x-2">
-        <button id="btn-close-modal" class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">閉じる</button>
-        <button id="btn-save-key" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow">保存</button>
-      </div>
+  <!-- フッター -->
+  <footer id="footer-toolbar" class="hidden bg-white border-t border-slate-200 px-3 py-2 shrink-0 z-20 flex justify-between items-center text-xs">
+    <div class="flex items-center space-x-3 text-slate-500 text-[11px]">
+      <span><i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i>赤ペン自動消去済</span>
+      <span><i class="fa-solid fa-shield-halved text-blue-500 mr-1"></i>下線・活字保護</span>
     </div>
-  </div>
+    <button id="btn-reselect" class="text-slate-500 hover:text-slate-800 underline">
+      別の写真を選択
+    </button>
+  </footer>
 
   <script>
-    let apiKey = localStorage.getItem('GEMINI_API_KEY') || '';
+    let originalImg = null;
+    let baseCanvas = document.createElement('canvas'); // 赤ペン消去済みベース
+    let baseCtx = baseCanvas.getContext('2d');
+
+    const viewCanvas = document.getElementById('view-canvas');
+    const viewCtx = viewCanvas.getContext('2d');
+    const selectCanvas = document.getElementById('select-canvas');
+    const selectCtx = selectCanvas.getContext('2d');
+
     const dropZone = document.getElementById('drop-zone');
-    const resultWrapper = document.getElementById('result-wrapper');
-    const mainCanvas = document.getElementById('main-canvas');
-    const mainCtx = mainCanvas.getContext('2d');
-    const loader = document.getElementById('loader');
-    const loaderText = document.getElementById('loader-text');
+    const canvasContainer = document.getElementById('canvas-container');
+    const guideBanner = document.getElementById('guide-banner');
+    const footerToolbar = document.getElementById('footer-toolbar');
     const exportGroup = document.getElementById('export-group');
-    const keyStatus = document.getElementById('key-status');
-    const keyModal = document.getElementById('key-modal');
-    const inputApiKey = document.getElementById('input-api-key');
+    const btnUndo = document.getElementById('btn-undo');
 
-    function updateKeyBadge() {
-      keyStatus.innerHTML = apiKey ? '<span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-1"></i>設定済</span>' : '<span class="text-amber-600 font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i>未設定</span>';
-    }
-    updateKeyBadge();
+    let historyStack = [];
+    const MAX_HISTORY = 10;
 
-    document.getElementById('btn-settings').addEventListener('click', () => { inputApiKey.value = apiKey; keyModal.classList.remove('hidden'); });
-    document.getElementById('btn-close-modal').addEventListener('click', () => keyModal.classList.add('hidden'));
-    document.getElementById('btn-save-key').addEventListener('click', () => {
-      apiKey = inputApiKey.value.trim();
-      localStorage.setItem('GEMINI_API_KEY', apiKey);
-      updateKeyBadge();
-      keyModal.classList.add('hidden');
-    });
+    let isSelecting = false;
+    let startX = 0, startY = 0;
+    let currentX = 0, currentY = 0;
 
+    // 画像読み込み
     ['camera-input', 'file-input'].forEach(id => {
       document.getElementById(id).addEventListener('change', (e) => {
-        if (!apiKey) {
-          keyModal.classList.remove('hidden');
-          alert('右上のボタンからGemini APIキーを設定してください。');
-          return;
+        if (e.target.files && e.target.files[0]) {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            const img = new Image();
+            img.onload = () => {
+              originalImg = img;
+              initWorkspace(img);
+            };
+            img.src = evt.target.result;
+          };
+          reader.readAsDataURL(e.target.files[0]);
         }
-        if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
       });
     });
 
     document.getElementById('btn-reselect').addEventListener('click', () => {
       dropZone.classList.remove('hidden');
-      resultWrapper.classList.add('hidden');
+      canvasContainer.classList.add('hidden');
+      guideBanner.classList.add('hidden');
+      footerToolbar.classList.add('hidden');
       exportGroup.classList.add('hidden');
     });
 
-    async function handleFile(file) {
-      loaderText.innerText = "写真を読み込み中...";
-      loader.classList.remove('hidden');
-
-      const img = new Image();
-      const reader = new FileReader();
-
-      reader.onload = async (e) => {
-        img.onload = async () => {
-          // 印刷用高画質キャンバス（長辺1600px）
-          let w = img.width, h = img.height;
-          const maxDim = 1600;
-          if (w > maxDim || h > maxDim) {
-            if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
-            else { w = Math.round((w * maxDim) / h); h = maxDim; }
-          }
-          mainCanvas.width = w;
-          mainCanvas.height = h;
-          mainCtx.drawImage(img, 0, 0, w, h);
-
-          // AI解析用軽量キャンバス（長辺700pxで高速送信）
-          const thumbCanvas = document.createElement('canvas');
-          const thumbDim = 700;
-          let tw = w, th = h;
-          if (w > h) { th = Math.round((h * thumbDim) / w); tw = thumbDim; }
-          else { tw = Math.round((w * thumbDim) / h); th = thumbDim; }
-          thumbCanvas.width = tw;
-          thumbCanvas.height = th;
-          thumbCanvas.getContext('2d').drawImage(img, 0, 0, tw, th);
-
-          await runAnalysis(thumbCanvas.toDataURL('image/jpeg', 0.65), w, h);
-        };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    }
-
-    async function runAnalysis(thumbBase64, fullW, fullH) {
-      loaderText.innerText = "AIが手書き箇所を高速検出中...";
-
-      const prompt = `この宿題プリント画像の手書き鉛筆文字および赤ペン丸付け・採点のバウンディングボックスを検出してください。
-印刷文字（タイトル・設問・Task・Goal）や下線・罫線は除外してください。`;
-
-      try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{
-              parts: [
-                { text: prompt },
-                { inline_data: { mime_type: "image/jpeg", data: thumbBase64.split(',')[1] } }
-              ]
-            }],
-            generationConfig: {
-              response_mime_type: "application/json",
-              response_schema: {
-                type: "OBJECT",
-                properties: {
-                  boxes: {
-                    type: "ARRAY",
-                    items: {
-                      type: "OBJECT",
-                      properties: {
-                        ymin: { type: "INTEGER" },
-                        xmin: { type: "INTEGER" },
-                        ymax: { type: "INTEGER" },
-                        xmax: { type: "INTEGER" }
-                      },
-                      required: ["ymin", "xmin", "ymax", "xmax"]
-                    }
-                  }
-                },
-                required: ["boxes"]
-              }
-            }
-          })
-        });
-
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.error?.message || "通信エラー");
-        }
-
-        const data = await res.json();
-        const jsonText = data.candidates?.[0]?.content?.parts?.[0]?.text || '{"boxes":[]}';
-        const parsed = JSON.parse(jsonText);
-        const boxes = parsed.boxes || [];
-
-        loaderText.innerText = "周囲の紙色に合わせて修復中...";
-        applyAdaptiveInpaint(boxes, fullW, fullH);
-
-        dropZone.classList.add('hidden');
-        resultWrapper.classList.remove('hidden');
-        exportGroup.classList.remove('hidden');
-
-      } catch (err) {
-        alert('解析エラー: ' + err.message);
-      } finally {
-        loader.classList.add('hidden');
-      }
-    }
-
-    // 周囲の紙色に適応するインペイント消去処理
-    function applyAdaptiveInpaint(boxes, w, h) {
-      const imgData = mainCtx.getImageData(0, 0, w, h);
-      const d = imgData.data;
-
-      // 1. 赤ペン・赤丸の消去（白ではなく周辺色を基準に）
-      for (let i = 0; i < d.length; i += 4) {
-        const r = d[i], g = d[i + 1], b = d[i + 2];
-        if (r > 85 && r > g * 1.35 && r > b * 1.35) {
-          d[i] = 250; d[i + 1] = 250; d[i + 2] = 250;
-        }
+    function initWorkspace(img) {
+      let w = img.width, h = img.height;
+      const maxDim = 1600;
+      if (w > maxDim || h > maxDim) {
+        if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+        else { w = Math.round((w * maxDim) / h); h = maxDim; }
       }
 
-      // 2. AI検出領域の周辺サンプリングインペイント
-      boxes.forEach(b => {
-        const y0 = Math.max(0, Math.floor((b.ymin / 1000) * h));
-        const y1 = Math.min(h - 1, Math.ceil((b.ymax / 1000) * h));
-        const x0 = Math.max(0, Math.floor((b.xmin / 1000) * w));
-        const x1 = Math.min(w - 1, Math.ceil((b.xmax / 1000) * w));
-
-        // 枠の外周（上・下・左・右の余白5px）から背景色をサンプリング
-        let bgR = 0, bgG = 0, bgB = 0, count = 0;
-        
-        // 上下端サンプリング
-        for (let x = x0; x <= x1; x += 2) {
-          const upY = Math.max(0, y0 - 3);
-          const downY = Math.min(h - 1, y1 + 3);
-          [upY, downY].forEach(sy => {
-            const idx = (sy * w + x) * 4;
-            const lum = 0.299 * d[idx] + 0.587 * d[idx + 1] + 0.114 * d[idx + 2];
-            if (lum > 90) { // 印刷文字や黒線を避けて背景色だけ取得
-              bgR += d[idx]; bgG += d[idx + 1]; bgB += d[idx + 2];
-              count++;
-            }
-          });
-        }
-
-        // 周囲の平均色（取得できなければほぼ白）
-        const fillR = count > 0 ? Math.round(bgR / count) : 248;
-        const fillG = count > 0 ? Math.round(bgG / count) : 248;
-        const fillB = count > 0 ? Math.round(bgB / count) : 248;
-
-        // 領域内の手書き鉛筆のみを消去（下線 lum < 50 は温存）
-        for (let y = y0; y <= y1; y++) {
-          for (let x = x0; x <= x1; x++) {
-            const idx = (y * w + x) * 4;
-            const lum = 0.299 * d[idx] + 0.587 * d[idx + 1] + 0.114 * d[idx + 2];
-
-            // 印刷された下線・文字の濃い黒（lum < 50）は保持し、鉛筆手書きを周辺紙色に置換
-            if (lum >= 50) {
-              d[idx] = fillR;
-              d[idx + 1] = fillG;
-              d[idx + 2] = fillB;
-            }
-          }
-        }
+      [baseCanvas, viewCanvas, selectCanvas].forEach(c => {
+        c.width = w;
+        c.height = h;
       });
 
-      mainCtx.putImageData(imgData, 0, 0);
+      // 1. 赤ペン・丸付け採点を画像全体から自動消去
+      baseCtx.drawImage(img, 0, 0, w, h);
+      const imgData = baseCtx.getImageData(0, 0, w, h);
+      const d = imgData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const r = d[i], g = d[i + 1], b = d[i + 2];
+        if (r > 80 && r > g * 1.35 && r > b * 1.35) {
+          d[i] = 252; d[i + 1] = 252; d[i + 2] = 252;
+        }
+      }
+      baseCtx.putImageData(imgData, 0, 0);
+
+      // 初期描画
+      viewCtx.drawImage(baseCanvas, 0, 0);
+
+      historyStack = [];
+      updateUndoButton();
+
+      dropZone.classList.add('hidden');
+      canvasContainer.classList.remove('hidden');
+      guideBanner.classList.remove('hidden');
+      footerToolbar.classList.remove('hidden');
+      exportGroup.classList.remove('hidden');
     }
 
-    // A4 PDF出力
+    // 座標計算用
+    function getCanvasPos(e) {
+      const rect = selectCanvas.getBoundingClientRect();
+      const scaleX = selectCanvas.width / rect.width;
+      const scaleY = selectCanvas.height / rect.height;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: Math.round((clientX - rect.left) * scaleX),
+        y: Math.round((clientY - rect.top) * scaleY)
+      };
+    }
+
+    // 範囲選択ドラッグ開始
+    function startSelect(e) {
+      isSelecting = true;
+      const pos = getCanvasPos(e);
+      startX = pos.x;
+      startY = pos.y;
+      currentX = pos.x;
+      currentY = pos.y;
+    }
+
+    function moveSelect(e) {
+      if (!isSelecting) return;
+      const pos = getCanvasPos(e);
+      currentX = pos.x;
+      currentY = pos.y;
+
+      // ガイド用の半透明青枠を描画
+      selectCtx.clearRect(0, 0, selectCanvas.width, selectCanvas.height);
+      const x = Math.min(startX, currentX);
+      const y = Math.min(startY, currentY);
+      const w = Math.abs(currentX - startX);
+      const h = Math.abs(currentY - startY);
+
+      selectCtx.fillStyle = 'rgba(59, 130, 246, 0.18)';
+      selectCtx.fillRect(x, y, w, h);
+      selectCtx.strokeStyle = 'rgba(37, 99, 235, 0.8)';
+      selectCtx.lineWidth = 2;
+      selectCtx.setLineDash([6, 4]);
+      selectCtx.strokeRect(x, y, w, h);
+    }
+
+    function endSelect() {
+      if (!isSelecting) return;
+      isSelecting = false;
+      selectCtx.clearRect(0, 0, selectCanvas.width, selectCanvas.height);
+
+      const x = Math.min(startX, currentX);
+      const y = Math.min(startY, currentY);
+      const w = Math.abs(currentX - startX);
+      const h = Math.abs(currentY - startY);
+
+      // あまりに小さいタップ（5px未満）は誤操作としてスキップ
+      if (w < 8 || h < 8) return;
+
+      saveState();
+      eraseAreaWithProtection(x, y, w, h);
+    }
+
+    // 囲んだ領域内の手書き消去（下線・活字保護 ＆ 自然な色合わせ）
+    function eraseAreaWithProtection(bx, by, bw, bh) {
+      const fullW = viewCanvas.width;
+      const fullH = viewCanvas.height;
+
+      const imgData = viewCtx.getImageData(0, 0, fullW, fullH);
+      const d = imgData.data;
+
+      // 1. 周辺紙色（枠の外周）を高速サンプリング
+      let bgR = 0, bgG = 0, bgB = 0, count = 0;
+      const x0 = Math.max(0, bx);
+      const x1 = Math.min(fullW - 1, bx + bw);
+      const y0 = Math.max(0, by);
+      const y1 = Math.min(fullH - 1, by + bh);
+
+      // 上辺と下辺のすぐ外側をサンプリング
+      for (let x = x0; x <= x1; x += 3) {
+        [Math.max(0, y0 - 3), Math.min(fullH - 1, y1 + 3)].forEach(sy => {
+          const idx = (sy * fullW + x) * 4;
+          const lum = 0.299 * d[idx] + 0.587 * d[idx + 1] + 0.114 * d[idx + 2];
+          if (lum > 85) {
+            bgR += d[idx]; bgG += d[idx + 1]; bgB += d[idx + 2];
+            count++;
+          }
+        });
+      }
+
+      const fillR = count > 0 ? Math.round(bgR / count) : 248;
+      const fillG = count > 0 ? Math.round(bgG / count) : 248;
+      const fillB = count > 0 ? Math.round(bgB / count) : 248;
+
+      // 2. 囲まれた領域内のピクセルを判定して消去
+      for (let y = y0; y <= y1; y++) {
+        for (let x = x0; x <= x1; x++) {
+          const idx = (y * fullW + x) * 4;
+          const r = d[idx], g = d[idx + 1], b = d[idx + 2];
+          const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+          // 下線や罫線などの真っ黒（lum < 52）はそのまま保護して残す
+          // 鉛筆の手書き部分（lum >= 52 かつ 背景より少し濃い部分）のみ周辺色に置換
+          if (lum >= 52) {
+            d[idx] = fillR;
+            d[idx + 1] = fillG;
+            d[idx + 2] = fillB;
+          }
+        }
+      }
+
+      viewCtx.putImageData(imgData, 0, 0);
+    }
+
+    // タッチ＆マウスイベント
+    selectCanvas.addEventListener('mousedown', startSelect);
+    window.addEventListener('mousemove', moveSelect);
+    window.addEventListener('mouseup', endSelect);
+
+    selectCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); startSelect(e); }, { passive: false });
+    window.addEventListener('touchmove', (e) => { if (isSelecting) { e.preventDefault(); moveSelect(e); } }, { passive: false });
+    window.addEventListener('touchend', endSelect);
+
+    // Undo管理
+    function saveState() {
+      if (historyStack.length >= MAX_HISTORY) historyStack.shift();
+      historyStack.push(viewCtx.getImageData(0, 0, viewCanvas.width, viewCanvas.height));
+      updateUndoButton();
+    }
+
+    btnUndo.addEventListener('click', () => {
+      if (historyStack.length > 0) {
+        const lastState = historyStack.pop();
+        viewCtx.putImageData(lastState, 0, 0);
+        updateUndoButton();
+      }
+    });
+
+    function updateUndoButton() {
+      btnUndo.disabled = historyStack.length === 0;
+    }
+
+    // 長押しで元画像表示
+    const btnCompare = document.getElementById('btn-compare');
+    const showOriginal = () => { if (originalImg) viewCtx.drawImage(originalImg, 0, 0, viewCanvas.width, viewCanvas.height); };
+    const restoreView = () => {
+      if (historyStack.length > 0) {
+        viewCtx.putImageData(historyStack[historyStack.length - 1], 0, 0);
+      } else {
+        viewCtx.drawImage(baseCanvas, 0, 0);
+      }
+    };
+
+    btnCompare.addEventListener('mousedown', showOriginal);
+    window.addEventListener('mouseup', restoreView);
+    btnCompare.addEventListener('touchstart', (e) => { e.preventDefault(); showOriginal(); });
+    window.addEventListener('touchend', restoreView);
+
+    // PDF出力 (A4サイズ自動適合)
     document.getElementById('btn-pdf').addEventListener('click', () => {
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF({
-        orientation: mainCanvas.width > mainCanvas.height ? 'landscape' : 'portrait',
+        orientation: viewCanvas.width > viewCanvas.height ? 'landscape' : 'portrait',
         unit: 'mm',
         format: 'a4'
       });
 
-      const imgData = mainCanvas.toDataURL('image/jpeg', 0.95);
+      const imgData = viewCanvas.toDataURL('image/jpeg', 0.95);
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       
-      const imgRatio = mainCanvas.width / mainCanvas.height;
+      const imgRatio = viewCanvas.width / viewCanvas.height;
       const pageRatio = pageWidth / pageHeight;
 
       let renderW = pageWidth;
@@ -346,14 +383,14 @@
       const offsetY = (pageHeight - renderH) / 2;
 
       pdf.addImage(imgData, 'JPEG', offsetX, offsetY, renderW, renderH);
-      pdf.save('homework_remastered.pdf');
+      pdf.save('homework_clean.pdf');
     });
 
     // JPEG保存
     document.getElementById('btn-jpg').addEventListener('click', () => {
       const link = document.createElement('a');
-      link.download = 'homework_remastered.jpg';
-      link.href = mainCanvas.toDataURL('image/jpeg', 0.92);
+      link.download = 'homework_clean.jpg';
+      link.href = viewCanvas.toDataURL('image/jpeg', 0.92);
       link.click();
     });
 
