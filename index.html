@@ -204,55 +204,78 @@
                     </div>
                 </div>
 
-                <!-- 2. ワンクリック消去プリセット -->
-                <div class="space-y-1.5">
-                    <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                        <i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-1.5"></i> ワンクリック復元フィルタ
+                <!-- 2. 復元フィルタ（複数同時選択・トグル式） -->
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        <span><i class="fa-solid fa-layer-group text-amber-400 mr-1.5"></i> 復元フィルタ（複数選択可）</span>
+                        <span class="text-[10px] text-brand-400 font-normal">同時適用OK</span>
                     </div>
-                    <div class="space-y-1">
-                        <button class="preset-btn w-full px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 hover:border-rose-500/50 flex items-center justify-between text-left transition group" data-preset="red">
+                    <div class="space-y-1.5" id="filterToggleGroup">
+                        <!-- 赤ペンフィルタ -->
+                        <button class="filter-toggle w-full px-3 py-2 rounded-xl border transition flex items-center justify-between text-left group bg-rose-500/10 border-rose-500/60 text-rose-200" data-filter="red">
                             <div class="flex items-center gap-2.5">
                                 <span class="w-3.5 h-3.5 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50 flex-shrink-0"></span>
                                 <div>
-                                    <div class="text-xs font-bold text-slate-200 group-hover:text-rose-300">赤ペン・丸付け採点を消去</div>
-                                    <div class="text-[10px] text-slate-400">黒印刷文字を残し、赤インクのみ完全に除去</div>
+                                    <div class="text-xs font-bold text-white flex items-center gap-1.5">
+                                        赤ペン・丸付け採点
+                                    </div>
+                                    <div class="text-[10px] text-slate-400">黒印刷文字を残し、赤・朱色インクを消去</div>
                                 </div>
                             </div>
-                            <i class="fa-solid fa-arrow-right text-[11px] text-slate-500 group-hover:translate-x-0.5 transition"></i>
+                            <span class="status-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500 text-white">ON</span>
                         </button>
 
-                        <button class="preset-btn w-full px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 hover:border-amber-500/50 flex items-center justify-between text-left transition group" data-preset="pencil">
+                        <!-- 鉛筆手書きフィルタ（高精度版） -->
+                        <button class="filter-toggle w-full px-3 py-2 rounded-xl border transition flex items-center justify-between text-left group bg-slate-800/70 border-slate-700/80 text-slate-300" data-filter="pencil">
                             <div class="flex items-center gap-2.5">
                                 <span class="w-3.5 h-3.5 rounded-full bg-stone-400 shadow-sm flex-shrink-0"></span>
                                 <div>
-                                    <div class="text-xs font-bold text-slate-200 group-hover:text-amber-300">鉛筆の手書き文字を消去</div>
-                                    <div class="text-[10px] text-slate-400">淡い黒鉛筆ストロークのみ紙色へインペイント</div>
+                                    <div class="text-xs font-bold text-white flex items-center gap-1.5">
+                                        鉛筆の手書き文字
+                                        <span class="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1 rounded font-medium">精度強化</span>
+                                    </div>
+                                    <div class="text-[10px] text-slate-400">印刷活字を保護し、黒鉛ストロークのみ適応除去</div>
                                 </div>
                             </div>
-                            <i class="fa-solid fa-arrow-right text-[11px] text-slate-500 group-hover:translate-x-0.5 transition"></i>
+                            <span class="status-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700 text-slate-400">OFF</span>
                         </button>
 
-                        <button class="preset-btn w-full px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 hover:border-blue-500/50 flex items-center justify-between text-left transition group" data-preset="blue">
+                        <!-- 青・水性ペンフィルタ -->
+                        <button class="filter-toggle w-full px-3 py-2 rounded-xl border transition flex items-center justify-between text-left group bg-slate-800/70 border-slate-700/80 text-slate-300" data-filter="blue">
                             <div class="flex items-center gap-2.5">
                                 <span class="w-3.5 h-3.5 rounded-full bg-blue-500 shadow-sm flex-shrink-0"></span>
                                 <div>
-                                    <div class="text-xs font-bold text-slate-200 group-hover:text-blue-300">青ペン・水性ペン消去</div>
-                                    <div class="text-[10px] text-slate-400">カラーペンやマーカーの書き込みを除去</div>
+                                    <div class="text-xs font-bold text-white">青ペン・水性ペン</div>
+                                    <div class="text-[10px] text-slate-400">カラーボールペンや青マーカーを除去</div>
                                 </div>
                             </div>
-                            <i class="fa-solid fa-arrow-right text-[11px] text-slate-500 group-hover:translate-x-0.5 transition"></i>
+                            <span class="status-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700 text-slate-400">OFF</span>
                         </button>
 
-                        <button class="preset-btn w-full px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 hover:border-sky-500/50 flex items-center justify-between text-left transition group" data-preset="paperWhite">
+                        <!-- 紙面の影除去・白紙化 -->
+                        <button class="filter-toggle w-full px-3 py-2 rounded-xl border transition flex items-center justify-between text-left group bg-slate-800/70 border-slate-700/80 text-slate-300" data-filter="paperWhite">
                             <div class="flex items-center gap-2.5">
-                                <span class="w-3.5 h-3.5 rounded-full bg-white shadow-sm flex-shrink-0"></span>
+                                <span class="w-3.5 h-3.5 rounded-full bg-slate-100 shadow-sm flex-shrink-0"></span>
                                 <div>
-                                    <div class="text-xs font-bold text-slate-200 group-hover:text-sky-300">紙面の影・黄ばみを真っ白に漂白</div>
-                                    <div class="text-[10px] text-slate-400">撮影影をスキャナー調にクリア補正（再印刷向け）</div>
+                                    <div class="text-xs font-bold text-white">紙面の影・黄ばみ漂白</div>
+                                    <div class="text-[10px] text-slate-400">スマホ撮影の部屋の影を漂白して白紙化</div>
                                 </div>
                             </div>
-                            <i class="fa-solid fa-arrow-right text-[11px] text-slate-500 group-hover:translate-x-0.5 transition"></i>
+                            <span class="status-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700 text-slate-400">OFF</span>
                         </button>
+                    </div>
+
+                    <!-- 鉛筆の濃さクイック選択 (鉛筆ON時のみ強調) -->
+                    <div id="pencilPresetBar" class="p-2.5 rounded-xl bg-slate-800/50 border border-slate-800 space-y-1.5">
+                        <div class="flex items-center justify-between text-[11px] text-slate-300">
+                            <span class="font-bold flex items-center gap-1"><i class="fa-solid fa-pencil text-amber-400 text-xs"></i> 鉛筆の濃さ目安:</span>
+                            <span id="lblPencilPresetStatus" class="text-amber-300 font-semibold text-[10px]">標準 (B / 2B)</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <button class="pencil-quick-btn py-1 rounded-lg text-[11px] font-semibold bg-slate-700 hover:bg-slate-650 text-slate-300" data-preset="light">薄め (HB/H)</button>
+                            <button class="pencil-quick-btn py-1 rounded-lg text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40" data-preset="medium">標準 (B/2B)</button>
+                            <button class="pencil-quick-btn py-1 rounded-lg text-[11px] font-semibold bg-slate-700 hover:bg-slate-650 text-slate-300" data-preset="dark">濃いめ (3B〜)</button>
+                        </div>
                     </div>
                 </div>
 
@@ -265,6 +288,30 @@
                     <div class="mt-3 space-y-3 pt-2 border-t border-slate-800 text-xs">
                         <div>
                             <div class="flex justify-between text-slate-400 mb-1">
+                                <span>鉛筆消去の感度（紙とのコントラスト比）</span>
+                                <span id="lblPencilSens" class="font-mono text-brand-400 font-semibold">42</span>
+                            </div>
+                            <input type="range" id="sliderPencilSens" min="15" max="85" value="42" class="w-full accent-brand-500">
+                            <div class="flex justify-between text-[9px] text-slate-500 mt-0.5">
+                                <span>薄い鉛筆のみ消す</span>
+                                <span>濃い文字も消す</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-slate-400 mb-1">
+                                <span>印刷文字の保護しきい値（極黒度）</span>
+                                <span id="lblPrintProtect" class="font-mono text-brand-400 font-semibold">48</span>
+                            </div>
+                            <input type="range" id="sliderPrintProtect" min="20" max="90" value="48" class="w-full accent-brand-500">
+                            <div class="flex justify-between text-[9px] text-slate-500 mt-0.5">
+                                <span>文字の消えを防ぐ</span>
+                                <span>濃い鉛筆も消す</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-slate-400 mb-1">
                                 <span>赤・朱色の検出感度</span>
                                 <span id="lblRedSens" class="font-mono text-brand-400 font-semibold">75</span>
                             </div>
@@ -273,26 +320,10 @@
 
                         <div>
                             <div class="flex justify-between text-slate-400 mb-1">
-                                <span>鉛筆/活字の明度境界</span>
-                                <span id="lblPencilSens" class="font-mono text-brand-400 font-semibold">120</span>
-                            </div>
-                            <input type="range" id="sliderPencilSens" min="60" max="190" value="120" class="w-full accent-brand-500">
-                        </div>
-
-                        <div>
-                            <div class="flex justify-between text-slate-400 mb-1">
                                 <span>背景ホワイト化（影除去）</span>
                                 <span id="lblWhiteSens" class="font-mono text-brand-400 font-semibold">205</span>
                             </div>
                             <input type="range" id="sliderWhiteSens" min="160" max="245" value="205" class="w-full accent-brand-500">
-                        </div>
-
-                        <div>
-                            <div class="flex justify-between text-slate-400 mb-1">
-                                <span>インペイント穴埋め半径</span>
-                                <span id="lblInpaintRad" class="font-mono text-brand-400 font-semibold">2px</span>
-                            </div>
-                            <input type="range" id="sliderInpaintRad" min="1" max="4" value="2" class="w-full accent-brand-500">
                         </div>
                     </div>
                 </details>
@@ -415,7 +446,7 @@
         
         <button id="mobileFilterToggleBtn" class="flex flex-col items-center justify-center text-slate-300 hover:text-brand-400">
             <i class="fa-solid fa-wand-magic-sparkles text-base text-amber-400"></i>
-            <span class="text-[10px] font-medium mt-0.5">消去</span>
+            <span class="text-[10px] font-medium mt-0.5">赤・鉛筆消去</span>
         </button>
 
         <button id="mobileEraserToggleBtn" class="flex flex-col items-center justify-center text-slate-300 hover:text-brand-400">
@@ -557,7 +588,13 @@
             history: [],
             historyIdx: -1,
             maxHistory: 8,
-            currentFilter: 'red'
+            // 複数フィルタのトグル状態
+            activeFilters: {
+                red: true,        // 赤ペン消去 (デフォルトON)
+                pencil: false,    // 鉛筆消去
+                blue: false,      // 青ペン消去
+                paperWhite: false // 影除去・白紙化
+            }
         };
 
         // --- DOM Cache ---
@@ -577,7 +614,7 @@
         // --- 初期化 ---
         window.addEventListener('DOMContentLoaded', () => {
             setupInputs();
-            setupPresets();
+            setupFilterToggles();
             setupDividerEvents();
             setupPanZoomGestures();
             setupBrushTool();
@@ -630,15 +667,15 @@
             canvas.height = 1600;
             const ctx = canvas.getContext('2d');
 
-            // 1. 少しアイボリーがかったリアルな紙色 + 微妙な部屋の影グラデーション
+            // 1. 少しアイボリーがかった紙色 + 微妙な部屋の影グラデーション
             const bgGrad = ctx.createLinearGradient(0, 0, 1200, 1600);
             bgGrad.addColorStop(0, '#f9fafb');
             bgGrad.addColorStop(1, '#e5e7eb');
             ctx.fillStyle = bgGrad;
             ctx.fillRect(0, 0, 1200, 1600);
 
-            // 2. 印刷された問題文（漆黒）
-            ctx.fillStyle = '#111827';
+            // 2. 印刷された問題文（漆黒: 濃度が非常に高い黒）
+            ctx.fillStyle = '#0f172a';
             ctx.font = 'bold 38px "Noto Sans JP", sans-serif';
             ctx.fillText('算数・計算プリント (小4復習)', 80, 120);
 
@@ -663,7 +700,7 @@
 
             problems.forEach(p => {
                 if (p.q) {
-                    ctx.fillStyle = '#111827';
+                    ctx.fillStyle = '#0f172a';
                     ctx.font = 'bold 26px "Noto Sans JP", sans-serif';
                     ctx.fillText(p.q, 80, p.y);
                 }
@@ -672,7 +709,7 @@
                 ctx.fillText(p.math, 120, p.y + 50);
 
                 // 3. 鉛筆の手書き回答（グレー寄りの黒鉛トーン）
-                ctx.fillStyle = '#4b5563';
+                ctx.fillStyle = '#52525b';
                 ctx.font = 'bold 32px cursive, "Noto Sans JP"';
                 ctx.fillText(p.hand, 580, p.y + 48);
 
@@ -746,11 +783,9 @@
             fitToScreen();
             updateSplitLayout();
 
-            // 初回は自動で「赤ペン消去」フィルタを適用
-            setTimeout(() => {
-                runImageProcessing('red');
-                showToast('赤ペンを消去しました。左右にスライドして比較できます', 'success');
-            }, 100);
+            // 初回は有効になっているフィルタを実行
+            runCombinedProcessingPipeline();
+            showToast('画像を読み込みました。フィルタを組み合わせて消去できます', 'info');
         }
 
         // --- 比較スプリットスライダー制御 ---
@@ -927,7 +962,7 @@
             transformContainer.style.transform = `translate(${state.panX}px, ${state.panY}px) scale(${state.zoom})`;
         }
 
-        // --- 画像処理アルゴリズム（HSV色空間＆インペインティング） ---
+        // --- 色空間ユーティリティ ---
         function rgbToHsv(r, g, b) {
             r /= 255; g /= 255; b /= 255;
             const max = Math.max(r, g, b), min = Math.min(r, g, b);
@@ -946,9 +981,42 @@
             return [h * 360, s, v];
         }
 
-        function runImageProcessing(filterType) {
+        // --- 局所背景輝度の適応的推定（グリッドサンプリング補間） ---
+        function estimateLocalBackground(src, w, h) {
+            const blockSize = 32;
+            const gridW = Math.ceil(w / blockSize);
+            const gridH = Math.ceil(h / blockSize);
+            const bgGrid = new Float32Array(gridW * gridH);
+
+            for (let gy = 0; gy < gridH; gy++) {
+                for (let gx = 0; gx < gridW; gx++) {
+                    const startX = gx * blockSize;
+                    const startY = gy * blockSize;
+                    const endX = Math.min(w, startX + blockSize);
+                    const endY = Math.min(h, startY + blockSize);
+
+                    let sumLum = 0;
+                    let count = 0;
+                    for (let py = startY; py < endY; py += 2) {
+                        for (let px = startX; px < endX; px += 2) {
+                            const pIdx = (py * w + px) * 4;
+                            const lum = 0.299 * src[pIdx] + 0.587 * src[pIdx+1] + 0.114 * src[pIdx+2];
+                            if (lum > 140) { // 暗いストロークを除外し紙面をサンプリング
+                                sumLum += lum;
+                                count++;
+                            }
+                        }
+                    }
+                    bgGrid[gy * gridW + gx] = count > 0 ? (sumLum / count) : 240;
+                }
+            }
+
+            return { bgGrid, gridW, gridH, blockSize };
+        }
+
+        // --- 複合フィルタ・画像処理パイプライン ---
+        function runCombinedProcessingPipeline() {
             if (!state.imageLoaded) return;
-            state.currentFilter = filterType;
 
             const w = state.width;
             const h = state.height;
@@ -959,117 +1027,145 @@
 
             // スライダーパラメータ
             const redThreshold = parseInt($('sliderRedSens').value, 10);
-            const pencilThreshold = parseInt($('sliderPencilSens').value, 10);
+            const pencilSensitivity = parseInt($('sliderPencilSens').value, 10);
+            const printProtectThreshold = parseInt($('sliderPrintProtect').value, 10);
             const whiteThreshold = parseInt($('sliderWhiteSens').value, 10);
-            const inpaintRad = parseInt($('sliderInpaintRad').value, 10);
 
-            // 推定背景紙色（明るいピクセルの平均値）
-            let bgR = 250, bgG = 250, bgB = 250;
+            const activeFilters = state.activeFilters;
+            const doRed = activeFilters.red;
+            const doPencil = activeFilters.pencil;
+            const doBlue = activeFilters.blue;
+            const doPaperWhite = activeFilters.paperWhite;
+
+            // 局所背景グリッドを推定
+            const { bgGrid, gridW, gridH, blockSize } = estimateLocalBackground(src, w, h);
+
+            // 全体推定紙色
+            let globalBgR = 250, globalBgG = 250, globalBgB = 250;
             let rAcc = 0, gAcc = 0, bAcc = 0, bgCount = 0;
-            for (let i = 0; i < src.length; i += 24) {
+            for (let i = 0; i < src.length; i += 32) {
                 const lum = 0.299 * src[i] + 0.587 * src[i+1] + 0.114 * src[i+2];
-                if (lum > 185) {
+                if (lum > 180) {
                     rAcc += src[i]; gAcc += src[i+1]; bAcc += src[i+2];
                     bgCount++;
                 }
             }
             if (bgCount > 0) {
-                bgR = Math.round(rAcc / bgCount);
-                bgG = Math.round(gAcc / bgCount);
-                bgB = Math.round(bAcc / bgCount);
+                globalBgR = Math.round(rAcc / bgCount);
+                globalBgG = Math.round(gAcc / bgCount);
+                globalBgB = Math.round(bAcc / bgCount);
             }
 
-            // 1パス目：マスク生成
+            // マスク配列 (1: 消去対象, 0: 保持)
             const mask = new Uint8Array(w * h);
 
-            for (let i = 0, p = 0; i < src.length; i += 4, p++) {
-                const r = src[i];
-                const g = src[i+1];
-                const b = src[i+2];
-                const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-                const [hue, sat, val] = rgbToHsv(r, g, b);
-                let erase = false;
+            for (let y = 0; y < h; y++) {
+                const gy = Math.min(gridH - 1, Math.floor(y / blockSize));
+                for (let x = 0; x < w; x++) {
+                    const gx = Math.min(gridW - 1, Math.floor(x / blockSize));
+                    const idx = y * w + x;
+                    const p = idx * 4;
 
-                if (filterType === 'red') {
-                    // 赤・朱色・ピンク（採点ペン特有）
-                    const isRedHue = (hue >= 335 || hue <= 25) && sat > 0.20 && val > 0.25;
-                    const diffRed = r - Math.max(g, b);
-                    if (isRedHue || diffRed > (150 - redThreshold)) {
-                        erase = true;
+                    const r = src[p];
+                    const g = src[p+1];
+                    const b = src[p+2];
+                    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+                    const localBgLum = bgGrid[gy * gridW + gx];
+                    let shouldErase = false;
+
+                    // 1. 赤ペン消去
+                    if (doRed && !shouldErase) {
+                        const [hue, sat, val] = rgbToHsv(r, g, b);
+                        const isRedHue = (hue >= 335 || hue <= 25) && sat > 0.20 && val > 0.25;
+                        const diffRed = r - Math.max(g, b);
+                        if (isRedHue || diffRed > (150 - redThreshold)) {
+                            shouldErase = true;
+                        }
                     }
-                } else if (filterType === 'pencil') {
-                    // 鉛筆（活字の漆黒 lum < 70 は残し、薄い黒鉛の線のみ抽出）
-                    if (lum > 70 && lum < pencilThreshold && sat < 0.16) {
-                        erase = true;
+
+                    // 2. 青ペン消去
+                    if (doBlue && !shouldErase) {
+                        const [hue, sat, val] = rgbToHsv(r, g, b);
+                        const isBlueHue = (hue >= 180 && hue <= 260) && sat > 0.22 && val > 0.25;
+                        if (isBlueHue || (b - Math.max(r, g)) > 25) {
+                            shouldErase = true;
+                        }
                     }
-                } else if (filterType === 'blue') {
-                    // 青ペン
-                    const isBlueHue = (hue >= 180 && hue <= 260) && sat > 0.22 && val > 0.25;
-                    if (isBlueHue || (b - Math.max(r, g)) > 25) {
-                        erase = true;
+
+                    // 3. 高精度鉛筆消去
+                    // 印刷文字は極端に濃い黒(lum < printProtectThreshold)であるのに対し、
+                    // 鉛筆は紙の局所輝度からの適度な濃度低下(contrastDelta)を持つ
+                    if (doPencil && !shouldErase) {
+                        const contrastDelta = localBgLum - lum;
+                        const isNotPrintedBlack = lum >= printProtectThreshold;
+                        const isPencilStroke = contrastDelta > pencilSensitivity && contrastDelta < (localBgLum - 35);
+                        
+                        // 彩度が低い（黒鉛特有の無彩色）ことを確認
+                        const maxChroma = Math.max(r, g, b) - Math.min(r, g, b);
+                        if (isNotPrintedBlack && isPencilStroke && maxChroma < 32) {
+                            shouldErase = true;
+                        }
                     }
-                } else if (filterType === 'paperWhite') {
-                    // 影・黄ばみのホワイトニング
-                    if (lum > whiteThreshold) {
-                        erase = true;
-                    }
+
+                    mask[idx] = shouldErase ? 1 : 0;
                 }
-
-                mask[p] = erase ? 1 : 0;
             }
 
-            // 2パス目：局所インペインティング（穴埋め）
+            // 周囲の紙面サンプリングによるインペイント（穴埋め）
             for (let y = 0; y < h; y++) {
                 for (let x = 0; x < w; x++) {
                     const idx = y * w + x;
-                    const pIdx = idx * 4;
+                    const p = idx * 4;
 
                     if (mask[idx] === 1) {
-                        let sumR = 0, sumG = 0, sumB = 0, validNeighbors = 0;
-                        for (let dy = -inpaintRad; dy <= inpaintRad; dy++) {
+                        // 周辺2ピクセルから背景色を採取
+                        let sumR = 0, sumG = 0, sumB = 0, count = 0;
+                        for (let dy = -2; dy <= 2; dy++) {
                             const ny = y + dy;
                             if (ny < 0 || ny >= h) continue;
-                            for (let dx = -inpaintRad; dx <= inpaintRad; dx++) {
+                            for (let dx = -2; dx <= 2; dx++) {
                                 const nx = x + dx;
                                 if (nx < 0 || nx >= w) continue;
                                 const nIdx = ny * w + nx;
                                 if (mask[nIdx] === 0) {
-                                    const nP = nIdx * 4;
-                                    sumR += src[nP];
-                                    sumG += src[nP+1];
-                                    sumB += src[nP+2];
-                                    validNeighbors++;
+                                    const np = nIdx * 4;
+                                    sumR += src[np];
+                                    sumG += src[np+1];
+                                    sumB += src[np+2];
+                                    count++;
                                 }
                             }
                         }
 
-                        if (validNeighbors > 0) {
-                            out[pIdx] = Math.round(sumR / validNeighbors);
-                            out[pIdx+1] = Math.round(sumG / validNeighbors);
-                            out[pIdx+2] = Math.round(sumB / validNeighbors);
-                        } else {
-                            out[pIdx] = bgR;
-                            out[pIdx+1] = bgG;
-                            out[pIdx+2] = bgB;
-                        }
-                        out[pIdx+3] = 255;
-                    } else {
-                        let r = src[pIdx];
-                        let g = src[pIdx+1];
-                        let b = src[pIdx+2];
+                        let targetR = count > 0 ? Math.round(sumR / count) : globalBgR;
+                        let targetG = count > 0 ? Math.round(sumG / count) : globalBgG;
+                        let targetB = count > 0 ? Math.round(sumB / count) : globalBgB;
 
-                        // 白紙化モード時は背景を高輝度へクランプ
-                        if (filterType === 'paperWhite') {
+                        if (doPaperWhite) {
+                            targetR = 255; targetG = 255; targetB = 255;
+                        }
+
+                        out[p] = targetR;
+                        out[p+1] = targetG;
+                        out[p+2] = targetB;
+                        out[p+3] = 255;
+                    } else {
+                        let r = src[p];
+                        let g = src[p+1];
+                        let b = src[p+2];
+
+                        // 影・黄ばみの漂白（白紙化モード）
+                        if (doPaperWhite) {
                             const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-                            if (lum > 195) {
+                            if (lum > whiteThreshold) {
                                 r = 255; g = 255; b = 255;
                             }
                         }
 
-                        out[pIdx] = r;
-                        out[pIdx+1] = g;
-                        out[pIdx+2] = b;
-                        out[pIdx+3] = src[pIdx+3];
+                        out[p] = r;
+                        out[p+1] = g;
+                        out[p+2] = b;
+                        out[p+3] = src[p+3];
                     }
                 }
             }
@@ -1078,34 +1174,108 @@
             pushHistory();
         }
 
-        // --- プリセット＆スライダーのイベントリスナー ---
-        function setupPresets() {
-            document.querySelectorAll('.preset-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const preset = e.currentTarget.getAttribute('data-preset');
-                    runImageProcessing(preset);
-                    showToast(`${btn.querySelector('.font-bold').textContent} を実行しました`, 'success');
+        // --- 複数選択トグル＆スライダーUI制御 ---
+        function setupFilterToggles() {
+            const toggleButtons = document.querySelectorAll('.filter-toggle');
+
+            const updateToggleStyle = (btn, isActive, filterKey) => {
+                const badge = btn.querySelector('.status-badge');
+                if (isActive) {
+                    badge.textContent = 'ON';
+                    badge.className = 'status-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-500 text-white';
+                    if (filterKey === 'red') {
+                        btn.className = 'filter-toggle w-full px-3 py-2 rounded-xl border transition flex items-center justify-between text-left group bg-rose-500/10 border-rose-500/60 text-rose-200';
+                        badge.className = 'status-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500 text-white';
+                    } else if (filterKey === 'pencil') {
+                        btn.className = 'filter-toggle w-full px-3 py-2 rounded-xl border transition flex items-center justify-between text-left group bg-amber-500/10 border-amber-500/60 text-amber-200';
+                        badge.className = 'status-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-white';
+                    } else if (filterKey === 'blue') {
+                        btn.className = 'filter-toggle w-full px-3 py-2 rounded-xl border transition flex items-center justify-between text-left group bg-blue-500/10 border-blue-500/60 text-blue-200';
+                        badge.className = 'status-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500 text-white';
+                    } else {
+                        btn.className = 'filter-toggle w-full px-3 py-2 rounded-xl border transition flex items-center justify-between text-left group bg-sky-500/10 border-sky-500/60 text-sky-200';
+                        badge.className = 'status-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-500 text-white';
+                    }
+                } else {
+                    badge.textContent = 'OFF';
+                    badge.className = 'status-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700 text-slate-400';
+                    btn.className = 'filter-toggle w-full px-3 py-2 rounded-xl border transition flex items-center justify-between text-left group bg-slate-800/70 border-slate-700/80 text-slate-300';
+                }
+            };
+
+            toggleButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const filter = btn.getAttribute('data-filter');
+                    state.activeFilters[filter] = !state.activeFilters[filter];
+                    updateToggleStyle(btn, state.activeFilters[filter], filter);
+                    runCombinedProcessingPipeline();
+                    
+                    const label = btn.querySelector('.text-xs').textContent.trim();
+                    const statusText = state.activeFilters[filter] ? '有効' : '解除';
+                    showToast(`${label} を ${statusText} にしました`, 'info');
                 });
             });
 
-            // スライダー表示更新
-            $('sliderRedSens').addEventListener('input', e => $('lblRedSens').textContent = e.target.value);
-            $('sliderPencilSens').addEventListener('input', e => $('lblPencilSens').textContent = e.target.value);
-            $('sliderWhiteSens').addEventListener('input', e => $('lblWhiteSens').textContent = e.target.value);
-            $('sliderInpaintRad').addEventListener('input', e => $('lblInpaintRad').textContent = `${e.target.value}px`);
+            // 鉛筆の濃さクイックボタン
+            const pencilQuickBtns = document.querySelectorAll('.pencil-quick-btn');
+            pencilQuickBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    pencilQuickBtns.forEach(b => {
+                        b.className = 'pencil-quick-btn py-1 rounded-lg text-[11px] font-semibold bg-slate-700 hover:bg-slate-650 text-slate-300';
+                    });
+                    btn.className = 'pencil-quick-btn py-1 rounded-lg text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40';
 
-            ['sliderRedSens', 'sliderPencilSens', 'sliderWhiteSens', 'sliderInpaintRad'].forEach(id => {
-                $(id).addEventListener('change', () => runImageProcessing(state.currentFilter));
+                    const preset = btn.getAttribute('data-preset');
+                    if (preset === 'light') {
+                        $('sliderPencilSens').value = 28;
+                        $('sliderPrintProtect').value = 65;
+                        $('lblPencilPresetStatus').textContent = '薄め (HB / H)';
+                    } else if (preset === 'medium') {
+                        $('sliderPencilSens').value = 42;
+                        $('sliderPrintProtect').value = 48;
+                        $('lblPencilPresetStatus').textContent = '標準 (B / 2B)';
+                    } else if (preset === 'dark') {
+                        $('sliderPencilSens').value = 62;
+                        $('sliderPrintProtect').value = 35;
+                        $('lblPencilPresetStatus').textContent = '濃いめ (3B〜)';
+                    }
+                    $('lblPencilSens').textContent = $('sliderPencilSens').value;
+                    $('lblPrintProtect').textContent = $('sliderPrintProtect').value;
+
+                    // 鉛筆フィルタを自動ONにして実行
+                    if (!state.activeFilters.pencil) {
+                        state.activeFilters.pencil = true;
+                        const pencilBtn = document.querySelector('.filter-toggle[data-filter="pencil"]');
+                        updateToggleStyle(pencilBtn, true, 'pencil');
+                    }
+                    runCombinedProcessingPipeline();
+                    showToast(`鉛筆設定: ${$('lblPencilPresetStatus').textContent} を適用しました`, 'success');
+                });
             });
 
-            // モバイル下部フィルタボタン
+            // スライダー変更検知
+            $('sliderRedSens').addEventListener('input', e => $('lblRedSens').textContent = e.target.value);
+            $('sliderPencilSens').addEventListener('input', e => $('lblPencilSens').textContent = e.target.value);
+            $('sliderPrintProtect').addEventListener('input', e => $('lblPrintProtect').textContent = e.target.value);
+            $('sliderWhiteSens').addEventListener('input', e => $('lblWhiteSens').textContent = e.target.value);
+
+            ['sliderRedSens', 'sliderPencilSens', 'sliderPrintProtect', 'sliderWhiteSens'].forEach(id => {
+                $(id).addEventListener('change', () => runCombinedProcessingPipeline());
+            });
+
+            // モバイル下部ワンタップ消去ボタン
             $('mobileFilterToggleBtn').addEventListener('click', () => {
                 if (!state.imageLoaded) {
                     showToast('先にプリントを読み込んでください', 'error');
                     return;
                 }
-                runImageProcessing('red');
-                showToast('赤ペン・採点を消去しました', 'success');
+                // 赤ペンと鉛筆の両方をONにして即実行
+                state.activeFilters.red = true;
+                state.activeFilters.pencil = true;
+                updateToggleStyle(document.querySelector('.filter-toggle[data-filter="red"]'), true, 'red');
+                updateToggleStyle(document.querySelector('.filter-toggle[data-filter="pencil"]'), true, 'pencil');
+                runCombinedProcessingPipeline();
+                showToast('赤ペンと鉛筆手書き文字を同時に消去しました', 'success');
             });
         }
 
@@ -1348,9 +1518,8 @@
         // --- PWA / オフラインキャッシュ用Service Worker（インライン対応） ---
         function registerPwaFallback() {
             if ('serviceWorker' in navigator) {
-                // インラインBlobからオフライン起動用ServiceWorkerを登録
                 const swCode = `
-                    const CACHE = 'hw-eraser-v1';
+                    const CACHE = 'hw-eraser-v2';
                     self.addEventListener('install', e => self.skipWaiting());
                     self.addEventListener('activate', e => clients.claim());
                     self.addEventListener('fetch', e => {
